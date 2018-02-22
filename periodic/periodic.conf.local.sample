@@ -1,0 +1,21 @@
+# Mail report settings
+daily_output="dailyreport@example.com"
+weekly_output="weeklyreport@example.com"
+monthly_output="monthlyreport@example.com"
+
+# System built-ins
+daily_clean_tmps_enable="YES"				# Delete stuff daily
+daily_clean_msgs_enable="YES"				# Delete msgs daily
+daily_clean_rwho_enable="YES"				# Delete rwho daily
+daily_accounting_enable="YES"				# Rotate acct files
+daily_status_disks_enable="YES"				# Check disk status
+daily_status_network_enable="YES"			# Check network status
+daily_status_rwho_enable="YES"				# Check system status
+daily_status_mailq_enable="YES"				# Check mail status
+weekly_whatis_enable="YES"				# Update whatis weekly
+monthly_accounting_enable="YES"				# Login accounting
+
+# Pretendco.net local
+daily_timemachine_clients_state="YES"
+daily_my_timemachine_state="YES"
+daily_state_APNS="YES"

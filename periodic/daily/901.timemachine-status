@@ -1,0 +1,55 @@
+#!/bin/bash
+
+if [ -r /etc/defaults/periodic.conf ]
+then
+	. /etc/defaults/periodic.conf
+	source_periodic_confs
+fi
+
+case "${daily_timemachine_clients_state:-NO}" in
+    [Yy][Ee][Ss])
+		echo ""
+		echo "Time Machine Backup Client Status:"
+        tempfile="/tmp/`uuidgen`"
+        if [ `sw_vers -productVersion| awk -F. '{print $2}'` -ge 13 ]; then
+		    /Applications/Server.app/Contents/ServerRoot/usr/sbin/serveradmin settings sharing | \
+            grep "timeMachineBackup =" | \
+            awk -F: '{print $4}'| uniq > $tempfile
+        else
+		    /Applications/Server.app/Contents/ServerRoot/usr/sbin/serveradmin settings timemachine | \
+            awk -F: '{print $4}'| uniq > $tempfile
+        fi
+        cat "$tempfile" | while read LINE
+		do
+			TMSHAREPOINT="$LINE"
+			if [ ! -d "${TMSHAREPOINT}" ]; then continue ; fi
+			cd "$TMSHAREPOINT"
+
+			ls -d1 *.sparsebundle > /dev/null 2>&1
+			R=$?
+			if [ $R -ne 0 ]; then continue ;fi
+
+			echo "Time Machine Backup Share: $TMSHAREPOINT"
+			echo "---------------------------------------------------"
+				
+			for i in `ls -d1 *.sparsebundle`
+			do
+				if [ -f "$i/com.apple.TimeMachine.MachineID.plist" ]; then
+					TMCLIENTNAME=`basename $i .sparsebundle`
+					echo "${TMCLIENTNAME}:"
+					/usr/libexec/PlistBuddy -c print "$i/com.apple.TimeMachine.MachineID.plist" | grep =
+				fi
+				if [ -f "$i/com.apple.TimeMachine.SnapshotHistory.plist" ]; then 
+					echo "Last snapshots (Max 10):"
+					/usr/libexec/PlistBuddy -c print "$i/com.apple.TimeMachine.SnapshotHistory.plist" | awk '$1 == "com.apple.backupd.SnapshotCompletionDate" {print "    "$3,$4,$5,$6,$7,$8}' | tail
+				fi
+				echo ""
+			done
+		done
+		;;
+	*)
+		rc=0
+		;;
+esac
+
+exit $rc

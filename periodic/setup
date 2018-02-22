@@ -1,0 +1,20 @@
+#!/bin/bash -x
+
+if [ `whoami` != "root" ]; then
+    echo "Type sudo $0"
+    exit 1
+fi
+
+cd $(dirname $0)
+for f in daily/*
+do
+    ln -sf "$PWD/$f" /etc/periodic/$f
+done
+
+cat <<__CONF >> /etc/periodic.conf.local
+
+# Pretendco.net local
+daily_timemachine_clients_state="YES"
+daily_my_timemachine_state="YES"
+daily_state_APNS="NO"
+__CONF

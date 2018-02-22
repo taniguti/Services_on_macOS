@@ -1,0 +1,27 @@
+#!/bin/sh
+
+if [ -r /etc/defaults/periodic.conf ]
+then
+	. /etc/defaults/periodic.conf
+	source_periodic_confs
+fi
+
+APNs_STATUS=`/Applications/Server.app/Contents/ServerRoot/usr/sbin/serveradmin status devicemgr | /usr/bin/awk '{print $3}' | tr -d \"`
+if [ ${APNs_STATUS:-x} != "RUNNING" ]; then
+	daily_state_APNS=NO
+fi
+
+echo ""
+case "${daily_state_APNS:-NO}" in
+    [Yy][Ee][Ss])
+		echo "Following process using remote Apple Push Notification Servie."
+		echo "--------------------------------------------------------------"
+		/usr/local/bin/APNs_check
+		;;
+	*)
+		echo "Do not check about availablity for Apple Notification Service"
+		rc=0
+		;;
+esac
+
+exit $rc
