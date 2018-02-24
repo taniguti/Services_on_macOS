@@ -1,11 +1,12 @@
-# os-x-periodic-tools
+# Additinal periodic scripts
 Scripts for periodic of OS X.
 
 # set up
 ```
 $ cd /usr/local/
-$ sudo git clone https://github.com/taniguti/os-x-periodic-tools.git
-$ sudo os-x-periodic-tools/setup
+$ sudo git clone https://github.com/taniguti/Service_on_macOS.git
+$ cd Service_on_macOS/periodic
+$ sudo ./setup
 ```
 
 `setup` script will add following lines at end of /etc/periodic.conf.local.
