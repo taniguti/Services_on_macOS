@@ -1,0 +1,14 @@
+#!/bin/sh
+
+if [ "Darwin" != `uname -s` ]; then exit 1 ;fi  
+
+MKHOME_SCRIPT="mkhome"
+username=$1
+if [ ${username:-x} = x ]; then exit 1 ;fi
+
+cd `dirname $0`
+if [ -x ./${MKHOME_SCRIPT} ]; then
+    sudo ./${MKHOME_SCRIPT} ${username} 2>/dev/null
+fi
+
+/usr/bin/dscl /Search -read /Users/${username} dsAttrTypeNative:sshPublicKey 2>/dev/null | /usr/bin/awk 'NR > 1'

@@ -1,0 +1,17 @@
+#!/bin/sh
+
+if [ "Darwin" != `uname -s` ]; then exit 1 ;fi
+
+username=$1
+if [ ${username:-x} = x ]; then exit 1 ;fi
+
+userhomedir=`/usr/bin/dscl /Search -read /Users/${username} NFSHomeDirectory | grep -v '/Network/Servers/' | awk 'NR == 1 {print $2}'`
+if [ -d "${userhomedir:-/var/empty}" ]; then exit 0 ; fi
+
+hometemp="/System/Library/User Template/Non_localized"
+if [ -d "$hometemp" ]; then
+    cp -a "$hometemp" "$userhomedir"
+else
+    mkdir -p "$userhomedir"
+fi
+chown -R ${username}:staff "$userhomedir"
