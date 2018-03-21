@@ -1,0 +1,5 @@
+# Power on on 2018 Dec 1st, 7:00:00 AM.
+#pmset schedule poweron "01/12/18 07:00:00" 
+
+pmset schedule poweron "MM/DD/YY HH:mm:ss" 
+pmset -g sched

@@ -1,0 +1,6 @@
+echo "current:"
+pmset -g sched
+echo ""
+pmset schedule cancelall
+echo "Reset:"
+pmset -g sched
