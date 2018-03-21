@@ -15,6 +15,6 @@ Edit sudoers file with visudo. Add a line as following.
     _sshd ALL=(ALL) NOPASSWD: /usr/local/bin/mkhome
     
 ----
-Search & Mappings
+## Search & Mappings
 Almost of OpenLDAP user attribute has user home directory pointing to /home. But macOS used to have under /Users.
-So you have to map 'dsAttrTypeStandard:NFSHomeDirectory' to '#/Users/$uid$'.
+So you have to map `dsAttrTypeStandard:NFSHomeDirectory` to `#/Users/$uid$`.
