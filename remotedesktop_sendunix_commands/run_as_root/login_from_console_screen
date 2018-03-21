@@ -1,0 +1,12 @@
+username='ladmin'
+password='apple'
+
+sleeptime=1
+
+osascript -e "tell application \"System Events\" to keystroke \"$username\"" 
+sleep $sleeptime 
+osascript -e 'tell application "System Events" to keystroke tab' 
+sleep $sleeptime 
+osascript -e "tell application \"System Events\" to keystroke \"$password\"" 
+sleep $sleeptime 
+osascript -e 'tell application "System Events" to keystroke return'
