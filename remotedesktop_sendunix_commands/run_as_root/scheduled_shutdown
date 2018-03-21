@@ -1,0 +1,6 @@
+# Example:
+#
+# Shutdown on 2018 Dec 1st, 7:10:00 AM.
+# pmset schedule shutdown "01/12/18 07:10:00" 
+pmset schedule shutdown "MM/DD/YY HH:mm:ss" 
+pmset -g sched

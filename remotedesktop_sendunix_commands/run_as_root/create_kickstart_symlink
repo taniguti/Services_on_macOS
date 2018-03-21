@@ -1,0 +1,7 @@
+
+KICKSTART="/System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart" 
+if [ -x "$KICKSTART" ]; then 
+    mkdir -p /usr/local/bin
+    ln -fs "$KICKSTART" /usr/local/bin/kickstart
+fi 
+ls -l /usr/local/bin/kickstart 

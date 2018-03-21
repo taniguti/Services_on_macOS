@@ -1,0 +1,3 @@
+# Allow control from remote computer even if Apple Remote Desktop is running.
+
+defaults write /Library/Preferences/com.apple.RemoteManagement AdminConsoleAllowsRemoteControl YES
