@@ -4,7 +4,7 @@ Scripts for periodic of OS X.
 # set up
 ```
 $ cd /usr/local/
-$ sudo git clone https://github.com/taniguti/Service_on_macOS.git
+$ sudo git clone https://github.com/taniguti/Services_on_macOS.git
 $ cd Service_on_macOS/periodic
 $ sudo ./setup
 ```
