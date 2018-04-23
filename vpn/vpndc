@@ -8,16 +8,20 @@ iam=`basename $0`
 pathtome=""
 
 subcmd=$1
+isHelp=`echo $2 | tr [:upper:] [:lower:]`
 shift
 args=$@
 
 function showhelp(){
+    :
 }
 
 function chkcond(){
+    :
 }
 
 if [ ${subcmd}x = x ]; then $subcmd=help ; fi
+if [ ${isHelp}X = help ]; then args='-h'; fi
 case $subcmd in
     show-confing | show )
     ;;
