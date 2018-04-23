@@ -1,0 +1,66 @@
+#!/bin/bash
+
+vpn_config="/Library/Preferences/SystemConfiguration/com.apple.RemoteAccessServers.plist"
+plist_file="/Library/LaunchDaemons/vpn.ppp.l2tp.plist"
+service_domain="system/vpn.ppp.l2tp"
+PB="/usr/libexec/PlistBuddy"
+iam=`basename $0`
+pathtome=""
+
+subcmd=$1
+shift
+args=$@
+
+function showhelp(){
+}
+
+function chkcond(){
+}
+
+if [ ${subcmd}x = x ]; then $subcmd=help ; fi
+case $subcmd in
+    show-confing | show )
+    ;;
+    show-presharedkey | show-psk)
+        vpnd-presharedkey $args
+    ;;
+    set-presharedkey | set-psk)
+        vpnd-presharedkey $args
+    ;;
+    show-client-address-range | show-car )
+        vpnd-car $args
+    ;;
+    set-client-address-range | set-car )
+        vpnd-car $args
+    ;;
+    show-dns )
+        vpnd-dns $args
+    ;;
+    set-dns )
+        vpnd-dns $args
+    ;;
+    start )
+        sudo launchctl kickstart -p $service_domain
+    ;;
+    stop )
+        sudo launchctl disable $service_domain
+    ;;
+    status )
+        sudo launchctl print $service_domain | awk '$1 == "state" {print $3}'
+    ;; 
+    restart )
+        sudo launchctl kickstart -k $service_domain
+    ;;
+    relaod )
+        sudo launchctl kill HUP $service_domain
+    ;;
+    migrate )
+        migrate_from_macOS_Server $args
+    ;;
+    init)
+        setup_vpnd $args
+    ;;
+    *)
+        showhelp
+    ;;
+esac

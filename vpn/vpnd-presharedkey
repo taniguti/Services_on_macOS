@@ -1,0 +1,49 @@
+#!/bin/bash
+
+function show_help(){
+    echo "Help!"
+}
+
+function check(){
+    ENCRYPT=`PlistBuddy -c "print  Servers:com.apple.ppp.l2tp:IPSec:SharedSecretEncryption" /Library/Preferences/SystemConfiguration/com.apple.RemoteAccessServers.plist`
+    if [ "${ENCRYPT}X" != "KeychainX" ]; then
+        echo "Unknown Shared Secret Encryption" >&2
+        exit 1
+    fi
+    PSK_ACCOUNT=`/usr/libexec/PlistBuddy -c "print  Servers:com.apple.ppp.l2tp:IPSec:SharedSecret" /Library/Preferences/SystemConfiguration/com.apple.RemoteAccessServers.plist`
+    if [ "${PSK_ACCOUNT}X" = X ]; then
+        echo "Failed to get Preshared Key" >&2
+        exit 1
+    fi
+}
+
+if [ $# = 0 ]; then 
+    show_help
+    exit 0
+fi
+
+while getopts sc:h sw
+do
+    case $sw in
+        s)
+            mode=show_psk
+        ;;
+        c)
+            mode=change_psk
+            $NEW_PKK="$OPTARG"
+        ;;
+        *)
+            show_help
+            exit 0
+        ;;
+    esac
+done
+
+check
+if [ ${mode:-show_psk} = 'show_psk' ]; then
+    : mode $mode
+    security find-generic-password -w -a $PSK_ACCOUNT "/Library/Keychains/System.keychain" 
+else
+    : mode $mode
+    security add-generic-password -U -s com.apple.net.racoon -A -a $PSK_ACCOUNT -w "$NEW_PSK" "/Library/Keychains/System.keychain" 
+fi
