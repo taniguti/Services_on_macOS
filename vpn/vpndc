@@ -3,7 +3,6 @@
 vpn_config="/Library/Preferences/SystemConfiguration/com.apple.RemoteAccessServers.plist"
 plist_file="/Library/LaunchDaemons/vpn.ppp.l2tp.plist"
 service_domain="system/vpn.ppp.l2tp"
-PB="/usr/libexec/PlistBuddy"
 iam=`basename $0`
 pathtome=""
 
@@ -13,7 +12,27 @@ shift
 args=$@
 
 function showhelp(){
-    :
+    cat << _HELP
+
+Configuration:
+    $iam [show-config|show]                : Show current vpn configuration.
+    $iam [show-presharedkey|show-psk]      : Show preshared key. 
+    $iam [set-presharedkey|set-psk] -c 'new_presharedkey' : Set new preshared key.
+    $iam [show-client-address-range|show-car] : Show IP address range for VPN clients
+    $iam [set-client-address-range|set-car] -s x.x.x.x -e x.x.x.y :  Set IP address range for VPN clients
+
+Control:
+    $iam start   : Start VPN service
+    $iam stop    : Stop VPN service
+    $iam [status|fullstatus]  : Show status of VPN service.
+    $iam restart : Restart VPN service
+    $iam reload  : Reload configuration
+
+Setup/Migrate:
+    $iam migrate : Migrate VPN service from macOS Server to macOS. $iam helps your VPN Service instaed of serveradmin.
+    $iam init    : Setup VPN service for macOS initially.
+
+_HELP
 }
 
 function chkcond(){
@@ -21,42 +40,45 @@ function chkcond(){
 }
 
 if [ ${subcmd}x = x ]; then $subcmd=help ; fi
-if [ ${isHelp}X = help ]; then args='-h'; fi
+if [ ${isHelp}x = helpx ]; then args='-h'; fi
 case $subcmd in
     show-confing | show )
     ;;
     show-presharedkey | show-psk)
-        vpnd-presharedkey $args
+        "${pathtome}/vpnd-presharedkey" ${args:-'-s'}
     ;;
     set-presharedkey | set-psk)
-        vpnd-presharedkey $args
+        "${pathtome}/vpnd-presharedkey" ${args:-'-h'}
     ;;
     show-client-address-range | show-car )
-        vpnd-car $args
+        "${pathtome}/vpnd-car" ${args:-'-s'}
     ;;
     set-client-address-range | set-car )
-        vpnd-car $args
+        "${pathtome}/vpnd-car" ${args:-'-h'}
     ;;
     show-dns )
-        vpnd-dns $args
+        vpnd-dns ${args:-'-s'}
     ;;
     set-dns )
-        vpnd-dns $args
+        vpnd-dns ${args:-'-h'}
     ;;
     start )
-        sudo launchctl kickstart -p $service_domain
+        launchctl kickstart -p $service_domain
     ;;
     stop )
-        sudo launchctl disable $service_domain
+        launchctl disable $service_domain
     ;;
     status )
-        sudo launchctl print $service_domain | awk '$1 == "state" {print $3}'
+        launchctl print $service_domain | awk '$1 == "state" {print $3}'
+    ;;
+    fullstatus )
+        launchctl print $service_domain
     ;; 
     restart )
-        sudo launchctl kickstart -k $service_domain
+        launchctl kickstart -k $service_domain
     ;;
     relaod )
-        sudo launchctl kill HUP $service_domain
+        launchctl kill HUP $service_domain
     ;;
     migrate )
         migrate_from_macOS_Server $args
