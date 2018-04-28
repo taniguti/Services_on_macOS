@@ -1,10 +1,22 @@
 #!/bin/bash
 
+function _readlink(){
+    f=`basename "$1"`
+    d=`cd $(dirname "$1"); pwd`
+    if [ -L "${d}/${f}" ]; then
+        r="`readlink -n \"${d}/${f}\"`"
+        _readlink "$r"
+    else
+        echo "${d}/${f}"
+    fi
+}
+
 vpn_config="/Library/Preferences/SystemConfiguration/com.apple.RemoteAccessServers.plist"
 plist_file="/Library/LaunchDaemons/vpn.ppp.l2tp.plist"
 service_domain="system/vpn.ppp.l2tp"
-iam=`basename $0`
-pathtome=""
+iam=`basename "$0"`
+fullpath_to_me=`_readlink "$0"`
+pathtome="`dirname \"$fullpath_to_me\"`"
 
 subcmd=$1
 isHelp=`echo $2 | tr [:upper:] [:lower:]`
