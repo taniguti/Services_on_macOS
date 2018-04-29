@@ -1,0 +1,1 @@
+ defaults write   /Library/Preferences/com.apple.RemoteManagement ARD_MulticastAllowed -bool yes
