@@ -37,6 +37,10 @@ function check(){
     fi
 }
 
+function generate-psk(){
+    :
+}
+
 if [ $# = 0 ]; then 
     show_help
     exit 1
@@ -56,22 +60,65 @@ do
     case $sw in
         c)
             check
-            security add-generic-password $opt -s $SNAME -A -a $PSK_ACCOUNT -w "$NEW_PSK" "$KEYCHAIN"
+            if [ $isFile = yes ]; then
+                if [ "${PSK_ACCOUNT}X" = X ]; then
+                    echo "Failed to get Preshared Key" >&2
+                    exit 1
+                fi
+                if [ "${ENCRYPT}X" = X ]; then
+                    echo "Unknown Shared Secret Encryption" >&2
+                    exit 1
+                fi
+                if [ "${NEW_PSK}X" = X ]; then
+                    NEW_PSK=`generate-psk`
+                fi
+                CURRENT_PSK=`security find-generic-password -w -a $PSK_ACCOUNT "$KEYCHAIN"`
+                if [ "${CURRENT_PSK}"X = X ]; then
+                    opt='-A'
+                else
+                    opt='-U -A'
+                fi
+                security add-generic-password $opt -w -s $SNAME -a $PSK_ACCOUNT "$NEW_PSK" "$KEYCHAIN"
+            else
+                echo "Not found ${CDIR}/${PNAME}" >&2
+                echo "VPN services is not configured yet" >&2
+                exit 1
+            fi
             ;;
         d)
-            mode=delete
+            check
+            if [ $isFile = yes ]; then
+                if [ "${PSK_ACCOUNT}X" = X ]; then
+                    echo "Failed to get Preshared Key" >&2
+                    exit 1
+                fi
+                if [ "${ENCRYPT}X" = X ]; then
+                    echo "Unknown Shared Secret Encryption" >&2
+                    exit 1
+                fi
+                CURRENT_PSK=`security find-generic-password -w -a $PSK_ACCOUNT "$KEYCHAIN"`
+                if [ "${CURRENT_PSK}"X != X ]; then
+                    security delete-generic-password -s $SNAME  -a $PSK_ACCOUNT "$KEYCHAIN"
+                fi
+            fi
             ;;
         s)
             check
-            if [ "${ENCRYPT}X" != "KeychainX" ]; then
-                echo "Unknown Shared Secret Encryption" >&2
+            if [ $isFile = yes ]; then
+                if [ "${PSK_ACCOUNT}X" = X ]; then
+                    echo "Failed to get Preshared Key" >&2
+                    exit 1
+                fi
+                if [ "${ENCRYPT}X" != "KeychainX" ]; then
+                    echo "Unknown Shared Secret Encryption" >&2
+                    exit 1
+                fi
+                security find-generic-password -w -a $PSK_ACCOUNT "$KEYCHAIN"
+            else
+                echo "Not found ${CDIR}/${PNAME}" >&2
+                echo "VPN services is not configured yet" >&2
                 exit 1
             fi
-            if [ "${PSK_ACCOUNT}X" = X ]; then
-                echo "Failed to get Preshared Key" >&2
-                exit 1
-            fi
-            security find-generic-password -w -a $PSK_ACCOUNT "$KEYCHAIN"
             ;;
         *)
             show_help
