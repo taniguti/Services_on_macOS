@@ -1,29 +1,41 @@
 #!/bin/bash
 
+iam=`basename "$0"`
+opt='-U'
+KEYCHAIN='/Library/Keychains/System.keychain'
+SNAME='com.apple.net.racoon'
+PNAME="com.apple.RemoteAccessServers.plist"
+CDIR="/Library/Preferences/SystemConfiguration"
+
+function _readlink(){
+    f=`basename "$1"`
+    d=`cd $(dirname "$1"); pwd`
+    if [ -L "${d}/${f}" ]; then
+        r="`readlink -n \"${d}/${f}\"`"
+        _readlink "$r"
+    else
+        echo "${d}/${f}"
+    fi
+}
+
 function show_help(){
     cat <<_HELP
 
     $iam -s: Show preshared key for VPN service.
-    $iam [-n] -c <preshared_key>: Replace preshared key with new one. Set new key if with '-n'
+    $iam -c <preshared_key>: Replace preshared key with new one. Set new key if with '-n'
 
 _HELP
 }
 
 function check(){
-    ENCRYPT=`PlistBuddy -c "print  Servers:com.apple.ppp.l2tp:IPSec:SharedSecretEncryption" /Library/Preferences/SystemConfiguration/com.apple.RemoteAccessServers.plist`
-    if [ "${ENCRYPT}X" != "KeychainX" ]; then
-        echo "Unknown Shared Secret Encryption" >&2
-        exit 1
-    fi
-    PSK_ACCOUNT=`/usr/libexec/PlistBuddy -c "print  Servers:com.apple.ppp.l2tp:IPSec:SharedSecret" /Library/Preferences/SystemConfiguration/com.apple.RemoteAccessServers.plist`
-    if [ "${PSK_ACCOUNT}X" = X ]; then
-        echo "Failed to get Preshared Key" >&2
-        exit 1
+    isFile=yes
+    if [ -f "${CDIR}/${PNAME}" ]; then
+        ENCRYPT=`PlistBuddy -c "print  Servers:com.apple.ppp.l2tp:IPSec:SharedSecretEncryption" "${CDIR}/${PNAME}"`
+        PSK_ACCOUNT=`/usr/libexec/PlistBuddy -c "print  Servers:com.apple.ppp.l2tp:IPSec:SharedSecret" "${CDIR}/${PNAME}"`
+    else
+        isFile=no
     fi
 }
-
-iam=`basename "$0"`
-OPT='-U'
 
 if [ $# = 0 ]; then 
     show_help
@@ -36,18 +48,30 @@ if [ `whoami` != root ]; then
     exit 1
 fi
 
-while getopts c:nhs sw
+fullpath_to_me=`_readlink "$0"`
+pathtome="`dirname \"$fullpath_to_me\"`"
+
+while getopts c:dhs sw
 do
     case $sw in
-        s)
-            mode=show_psk
-            ;;
         c)
-            mode=change_psk
-            $NEW_PKK="$OPTARG"
+            check
+            security add-generic-password $opt -s $SNAME -A -a $PSK_ACCOUNT -w "$NEW_PSK" "$KEYCHAIN"
             ;;
-        n)
-            OPT=''
+        d)
+            mode=delete
+            ;;
+        s)
+            check
+            if [ "${ENCRYPT}X" != "KeychainX" ]; then
+                echo "Unknown Shared Secret Encryption" >&2
+                exit 1
+            fi
+            if [ "${PSK_ACCOUNT}X" = X ]; then
+                echo "Failed to get Preshared Key" >&2
+                exit 1
+            fi
+            security find-generic-password -w -a $PSK_ACCOUNT "$KEYCHAIN"
             ;;
         *)
             show_help
@@ -55,12 +79,3 @@ do
             ;;
     esac
 done
-
-check
-if [ ${mode:-show_psk} = 'show_psk' ]; then
-    : mode $mode
-    security find-generic-password -w -a $PSK_ACCOUNT "/Library/Keychains/System.keychain" 
-else
-    : mode $mode
-    security add-generic-password $OPT -s com.apple.net.racoon -A -a $PSK_ACCOUNT -w "$NEW_PSK" "/Library/Keychains/System.keychain"
-fi
