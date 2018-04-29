@@ -11,18 +11,6 @@ function _readlink(){
     fi
 }
 
-vpn_config="/Library/Preferences/SystemConfiguration/com.apple.RemoteAccessServers.plist"
-plist_file="/Library/LaunchDaemons/vpn.ppp.l2tp.plist"
-service_domain="system/vpn.ppp.l2tp"
-iam=`basename "$0"`
-fullpath_to_me=`_readlink "$0"`
-pathtome="`dirname \"$fullpath_to_me\"`"
-
-subcmd=$1
-isHelp=`echo $2 | tr [:upper:] [:lower:]`
-shift
-args=$@
-
 function showhelp(){
     cat << _HELP
 
@@ -40,17 +28,31 @@ Control:
     $iam restart : Restart VPN service
     $iam reload  : Reload configuration
 
-Setup/Migrate:
+Setup/Migrate/Deploy:
     $iam migrate : Migrate VPN service from macOS Server to macOS. $iam helps your VPN Service instaed of serveradmin.
     $iam init    : Setup VPN service for macOS initially.
+    $iam profile : Export configuration profile for VPN Service
 
 _HELP
 }
 
 function chkcond(){
-    :
+    if [ `whoami` = root ]; then isRoot=yes ; fi
 }
 
+vpn_config="/Library/Preferences/SystemConfiguration/com.apple.RemoteAccessServers.plist"
+plist_file="/Library/LaunchDaemons/vpn.ppp.l2tp.plist"
+service_domain="system/vpn.ppp.l2tp"
+iam=`basename "$0"`
+fullpath_to_me=`_readlink "$0"`
+pathtome="`dirname \"$fullpath_to_me\"`"
+
+subcmd=$1
+isHelp=`echo $2 | tr [:upper:] [:lower:]`
+shift
+args=$@
+
+chkcond
 if [ ${subcmd}x = x ]; then $subcmd=help ; fi
 if [ ${isHelp}x = helpx ]; then args='-h'; fi
 case $subcmd in
@@ -95,6 +97,9 @@ case $subcmd in
     migrate )
         migrate_from_macOS_Server $args
     ;;
+    profile )
+        vpn-profile $args
+        ;;
     init)
         setup_vpnd $args
     ;;
