@@ -1,0 +1,16 @@
+#!/bin/bash
+
+function _readlink(){
+    f=`basename "$1"`
+    d=`cd $(dirname "$1"); pwd`
+    if [ -L "${d}/${f}" ]; then
+        r="`readlink -n \"${d}/${f}\"`"
+        _readlink "$r"
+    else
+        echo "${d}/${f}"
+    fi
+}
+
+iam=`basename "$0"`
+fullpath_to_me=`_readlink "$0"`
+pathtome="`dirname \"$fullpath_to_me\"`"

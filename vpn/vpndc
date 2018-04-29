@@ -37,7 +37,34 @@ _HELP
 }
 
 function chkcond(){
-    if [ `whoami` = root ]; then isRoot=yes ; fi
+    isRoot=yes
+    isConfigured=yes
+    if [ `whoami` != root ]; then isRoot=no ; fi
+    if [ ! -f "$plist_file" ]; then isConfigured=no ; fi
+    if [ ! -f "$vpn_config" ]; then isConfigured=no ; fi
+}
+
+function chkconfig(){
+    chk=$1
+    if [ ${chk:-no} = 'init' ]; then
+        if [ $isConfigured = "yes" ]; then
+            echo "Configured already."
+            exit 1
+        fi
+    fi
+    if [ $isConfigured = "no" ]; then
+        echo "Not configured yet."
+        echo "For configure vpn service, type \"sudo $iam [init|migrate]\""
+        exit 1
+    fi
+}
+
+function chkroot(){
+    if [ $isRoot != "yes" ]; then
+        echo "Use me with 'sudo'"
+        echo "sudo $iam $subcmd"
+        exit 1
+    fi
 }
 
 vpn_config="/Library/Preferences/SystemConfiguration/com.apple.RemoteAccessServers.plist"
@@ -57,53 +84,93 @@ if [ ${subcmd}x = x ]; then $subcmd=help ; fi
 if [ ${isHelp}x = helpx ]; then args='-h'; fi
 case $subcmd in
     show-confing | show )
-    ;;
-    show-presharedkey | show-psk)
-        "${pathtome}/vpnd-presharedkey" ${args:-'-s'}
-    ;;
-    set-presharedkey | set-psk)
-        "${pathtome}/vpnd-presharedkey" ${args:-'-h'}
-    ;;
-    show-client-address-range | show-car )
-        "${pathtome}/vpnd-car" ${args:-'-s'}
-    ;;
-    set-client-address-range | set-car )
-        "${pathtome}/vpnd-car" ${args:-'-h'}
-    ;;
-    show-dns )
-        vpnd-dns ${args:-'-s'}
-    ;;
-    set-dns )
-        vpnd-dns ${args:-'-h'}
-    ;;
-    start )
-        launchctl kickstart -p $service_domain
-    ;;
-    stop )
-        launchctl disable $service_domain
-    ;;
-    status )
-        launchctl print $service_domain | awk '$1 == "state" {print $3}'
-    ;;
-    fullstatus )
-        launchctl print $service_domain
-    ;; 
-    restart )
-        launchctl kickstart -k $service_domain
-    ;;
-    relaod )
-        launchctl kill HUP $service_domain
-    ;;
-    migrate )
-        migrate_from_macOS_Server $args
-    ;;
-    profile )
-        vpn-profile $args
+        chkconfig
         ;;
-    init)
-        setup_vpnd $args
-    ;;
-    *)
+    show-presharedkey | show-psk)
+        chkconfig
+        chkroot
+        "${pathtome}/vpnd-presharedkey" ${args:-'-s'}
+        ;;
+    set-presharedkey | set-psk)
+        chkconfig
+        chkroot
+        "${pathtome}/vpnd-presharedkey" ${args:-'-h'}
+        ;;
+    show-client-address-range | show-car )
+        chkconfig
+        "${pathtome}/vpnd-car" ${args:-'-s'}
+        ;;
+    set-client-address-range | set-car )
+        chkconfig
+        chkroot
+        "${pathtome}/vpnd-car" ${args:-'-h'}
+        ;;
+    show-dns )
+        chkconfig
+        vpnd-dns ${args:-'-s'}
+        ;;
+    set-dns )
+        chkconfig
+        chkroot
+        vpnd-dns ${args:-'-h'}
+        ;;
+    start )
+        chkconfig
+        chkroot
+        launchctl kickstart -p $service_domain
+        ;;
+    stop )
+        chkconfig
+        chkroot
+        launchctl disable $service_domain
+        ;;
+    status )
+        chkconfig
+        launchctl print $service_domain | awk '$1 == "state" {print $3}'
+        ;;
+    fullstatus )
+        chkconfig
+        launchctl print $service_domain
+        ;; 
+    restart )
+        chkconfig
+        chkroot
+        launchctl kickstart -k $service_domain
+        ;;
+    relaod )
+        chkconfig
+        chkroot
+        launchctl kill HUP $service_domain
+        ;;
+    migrate )
+        chkconfig init
+        chkroot
+        if [ ! -f "$vpn_config" ]; then
+            echo "Not found ${vpn_config}."
+            echo "Execute initial setup."
+            "${pathtome}/setup-vpnd" -i
+        fi
+        "${pathtome}/setup-vpnd" ${args:-'-m'}
+        ;;
+    init )
+        chkconfig init
+        chkroot
+        if [ -f "$vpn_config" ]; then
+            echo "Found ${vpn_config}."
+            echo "Try migrate..."
+            "${pathtome}/setup-vpnd" -m
+        fi
+        "${pathtome}/setup-vpnd" ${args:-'-i'}
+        ;;
+    profile )
+        chkconfig
+        chkroot
+        "${pathtome}/vpn-profile" ${args:-'-h'}
+        ;;
+    * )
         showhelp
-    ;;
+        ;;
 esac
+
+# vpn_config="/Library/Preferences/SystemConfiguration/com.apple.RemoteAccessServers.plist"
+# plist_file="/Library/LaunchDaemons/vpn.ppp.l2tp.plist"
