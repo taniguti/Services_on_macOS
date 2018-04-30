@@ -22,7 +22,7 @@ function show_help(){
     cat <<_HELP
 
     $iam -s: Show preshared key for VPN service.
-    $iam -c <preshared_key>: Replace preshared key with new one. Set new key if with '-n'
+    $iam -c <preshared_key>: Replace preshared key with new one. If it is not set, set new one.
 
 _HELP
 }
@@ -35,10 +35,6 @@ function check(){
     else
         isFile=no
     fi
-}
-
-function generate-psk(){
-    :
 }
 
 if [ $# = 0 ]; then 
@@ -70,7 +66,7 @@ do
                     exit 1
                 fi
                 if [ "${NEW_PSK}X" = X ]; then
-                    NEW_PSK=`generate-psk`
+                    NEW_PSK=`openssl rand -base64 32 | fold -w 32 | head -1`
                 fi
                 CURRENT_PSK=`security find-generic-password -w -a $PSK_ACCOUNT "$KEYCHAIN"`
                 if [ "${CURRENT_PSK}"X = X ]; then
