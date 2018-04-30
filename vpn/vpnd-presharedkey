@@ -55,6 +55,7 @@ while getopts c:dhs sw
 do
     case $sw in
         c)
+            NEW_PSK="${OPTARG}"
             check
             if [ $isFile = yes ]; then
                 if [ "${PSK_ACCOUNT}X" = X ]; then
@@ -74,7 +75,7 @@ do
                 else
                     opt='-U -A'
                 fi
-                security add-generic-password $opt -w -s $SNAME -a $PSK_ACCOUNT "$NEW_PSK" "$KEYCHAIN"
+                security add-generic-password $opt -s $SNAME -a $PSK_ACCOUNT -w "$NEW_PSK" "$KEYCHAIN"
             else
                 echo "Not found ${CDIR}/${PNAME}" >&2
                 echo "VPN services is not configured yet" >&2
