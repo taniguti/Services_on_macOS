@@ -51,7 +51,7 @@ fi
 fullpath_to_me=`_readlink "$0"`
 pathtome="`dirname \"$fullpath_to_me\"`"
 
-while getopts c:dhs sw
+while getopts cdhs sw
 do
     case $sw in
         c)
@@ -95,7 +95,7 @@ do
                 fi
                 CURRENT_PSK=`security find-generic-password -w -a $PSK_ACCOUNT "$KEYCHAIN"`
                 if [ "${CURRENT_PSK}"X != X ]; then
-                    security delete-generic-password -s $SNAME  -a $PSK_ACCOUNT "$KEYCHAIN"
+                    security delete-generic-password -s $SNAME  -a $PSK_ACCOUNT "$KEYCHAIN" > /dev/null 2>&1
                 fi
             fi
             ;;
