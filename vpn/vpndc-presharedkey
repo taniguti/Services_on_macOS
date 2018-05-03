@@ -4,8 +4,7 @@ iam=`basename "$0"`
 opt='-U'
 KEYCHAIN='/Library/Keychains/System.keychain'
 SNAME='com.apple.net.racoon'
-PNAME="com.apple.RemoteAccessServers.plist"
-CDIR="/Library/Preferences/SystemConfiguration"
+PNAME="/Library/Preferences/SystemConfiguration/com.apple.RemoteAccessServers.plist"
 
 function show_help(){
     cat <<_HELP
@@ -25,9 +24,9 @@ _HELP
 
 function check(){
     isFile=yes
-    if [ -f "${CDIR}/${PNAME}" ]; then
-        ENCRYPT=`PlistBuddy -c "print  Servers:com.apple.ppp.l2tp:IPSec:SharedSecretEncryption" "${CDIR}/${PNAME}"`
-        PSK_ACCOUNT=`/usr/libexec/PlistBuddy -c "print Servers:com.apple.ppp.l2tp:IPSec:SharedSecret" "${CDIR}/${PNAME}"`
+    if [ -f "${PNAME}" ]; then
+        ENCRYPT=`PlistBuddy -c "print  Servers:com.apple.ppp.l2tp:IPSec:SharedSecretEncryption" "${PNAME}"`
+        PSK_ACCOUNT=`/usr/libexec/PlistBuddy -c "print Servers:com.apple.ppp.l2tp:IPSec:SharedSecret" "${PNAME}"`
     else
         isFile=no
     fi
@@ -77,7 +76,7 @@ do
                     exit $rtn
                 fi
             else
-                echo "Not found ${CDIR}/${PNAME}" >&2
+                echo "Not found ${PNAME}" >&2
                 echo "VPN services is not configured yet" >&2
                 exit 1
             fi
@@ -112,7 +111,7 @@ do
                 fi
                 security find-generic-password -w -a $PSK_ACCOUNT "$KEYCHAIN"
             else
-                echo "Not found ${CDIR}/${PNAME}" >&2
+                echo "Not found ${PNAME}" >&2
                 echo "VPN services is not configured yet" >&2
                 exit 1
             fi
