@@ -15,9 +15,8 @@ function showhelp(){
     cat << _HELP
 
 Configuration:
-    $iam [show-config|show]                : Show current vpn configuration.
-    $iam [show-presharedkey|show-psk]      : Show preshared key. 
-    $iam [set-presharedkey|set-psk] -c 'new_presharedkey' : Set new preshared key.
+    $iam [show-config|show]      : Show current vpn configuration.
+    $iam [presharedkey|psk]      : Configure preshared key. 
     $iam [show-client-address-range|show-car] : Show IP address range for VPN clients
     $iam [set-client-address-range|set-car] -s x.x.x.x -e x.x.x.y :  Set IP address range for VPN clients
 
@@ -86,15 +85,12 @@ case $subcmd in
     show-confing | show )
         chkconfig
         ;;
-    show-presharedkey | show-psk)
-        chkconfig
-        chkroot
-        "${pathtome}/vpnd-presharedkey" ${args:-'-s'}
-        ;;
-    set-presharedkey | set-psk)
-        chkconfig
-        chkroot
-        "${pathtome}/vpnd-presharedkey" ${args:-'-h'}
+    presharedkey | psk)
+        if [ x"$args" != x'-h' ]; then
+            chkconfig
+            chkroot
+        fi
+        "${pathtome}/${subcmd}"  ${args:-'-h'}
         ;;
     show-client-address-range | show-car )
         chkconfig
