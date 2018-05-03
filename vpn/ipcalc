@@ -106,11 +106,11 @@ do
             ;;
         n)
             mode=calc
-            expr ${OPTARG:-0} + 0 > /dev/null 2>&1
+            expr ${OPTARG:-0} + 1 > /dev/null 2>&1
             if [ $? -ne 0 ]; then
                 mode=help
             else
-                if [ ${OPTARG} -le 0 ]; then
+                if [ ${OPTARG} -lt 0 ]; then
                     mode=help
                 else
                     num=${OPTARG}
