@@ -18,6 +18,7 @@ Configuration:
     $iam [show-config|show]      : Show current vpn configuration.
     $iam [presharedkey|psk]      : Configure preshared key. 
     $iam [client-address-range|car] : Configure IP address range for VPN clients
+    $iam [hostname] : Configure access hostname
 
 Control:
     $iam start   : Start VPN service
@@ -84,11 +85,19 @@ case $subcmd in
     show-confing | show )
         chkconfig
         ;;
-    presharedkey | psk | client-address-range | car | dns )
-        if [ x"$args" != x'-h' ]; then
-            chkconfig
-            chkroot
-        fi
+    presharedkey | psk | client-address-range | car | dns | hostname )
+        case "${args:-'-h'}" in
+            '-h' )
+                : no check
+                ;;
+            '-s' )
+                chkconfig
+                ;;
+            * )
+                chkconfig
+                chkroot
+                ;;
+        esac
         "${pathtome}/${subcmd}" ${args:-'-h'}
         ;;
     start )

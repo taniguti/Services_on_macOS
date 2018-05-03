@@ -18,7 +18,7 @@ function show_help(){
     cat <<_HELP
 
 Usage::
-    $iad -d "n.n.n.n, n.n.n.m, ...." : Set DNS server address for vpn client.
+    $iam -d "n.n.n.n, n.n.n.m, ...." : Set DNS server address for vpn client.
     $iam -D "your.domain, other.domain, ..." : Set search domain name.
     $iam -s : Show DNS server address for vpn client.
     $iam -h : Show this message.
