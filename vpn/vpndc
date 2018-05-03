@@ -17,8 +17,7 @@ function showhelp(){
 Configuration:
     $iam [show-config|show]      : Show current vpn configuration.
     $iam [presharedkey|psk]      : Configure preshared key. 
-    $iam [show-client-address-range|show-car] : Show IP address range for VPN clients
-    $iam [set-client-address-range|set-car] -s x.x.x.x -e x.x.x.y :  Set IP address range for VPN clients
+    $iam [client-address-range|car] : Configure IP address range for VPN clients
 
 Control:
     $iam start   : Start VPN service
@@ -85,30 +84,12 @@ case $subcmd in
     show-confing | show )
         chkconfig
         ;;
-    presharedkey | psk)
+    presharedkey | psk | client-address-range | car | dns )
         if [ x"$args" != x'-h' ]; then
             chkconfig
             chkroot
         fi
-        "${pathtome}/${subcmd}"  ${args:-'-h'}
-        ;;
-    show-client-address-range | show-car )
-        chkconfig
-        "${pathtome}/vpnd-car" ${args:-'-s'}
-        ;;
-    set-client-address-range | set-car )
-        chkconfig
-        chkroot
-        "${pathtome}/vpnd-car" ${args:-'-h'}
-        ;;
-    show-dns )
-        chkconfig
-        vpnd-dns ${args:-'-s'}
-        ;;
-    set-dns )
-        chkconfig
-        chkroot
-        vpnd-dns ${args:-'-h'}
+        "${pathtome}/${subcmd}" ${args:-'-h'}
         ;;
     start )
         chkconfig
