@@ -38,7 +38,7 @@ function check(){
     isFile=yes
     if [ -f "${CDIR}/${PNAME}" ]; then
         ENCRYPT=`PlistBuddy -c "print  Servers:com.apple.ppp.l2tp:IPSec:SharedSecretEncryption" "${CDIR}/${PNAME}"`
-        PSK_ACCOUNT=`/usr/libexec/PlistBuddy -c "print  Servers:com.apple.ppp.l2tp:IPSec:SharedSecret" "${CDIR}/${PNAME}"`
+        PSK_ACCOUNT=`/usr/libexec/PlistBuddy -c "print Servers:com.apple.ppp.l2tp:IPSec:SharedSecret" "${CDIR}/${PNAME}"`
     else
         isFile=no
     fi
@@ -50,7 +50,8 @@ if [ $# = 0 ]; then
 fi
 
 if [ `whoami` != root ]; then
-    echo "You need administrator access to run this tool... exiting!"
+    echo "You need administrator access to run this tool..."
+    echo ""
     show_help
     exit 1
 fi
@@ -76,7 +77,7 @@ do
                 if [ "${NEW_PSK}X" = X ]; then
                     NEW_PSK=`openssl rand -base64 32 | fold -w 32 | head -1`
                 fi
-                CURRENT_PSK=`security find-generic-password -w -a $PSK_ACCOUNT "$KEYCHAIN"`
+                CURRENT_PSK=`security find-generic-password -w -a $PSK_ACCOUNT "$KEYCHAIN" 2> /dev/null`
                 if [ "${CURRENT_PSK}"X = X ]; then
                     opt='-A'
                 else
@@ -86,7 +87,7 @@ do
                 rtn=$?
                 if [ $rtn -ne 0 ]; then
                     echo "Failed to update preshared key."
-                    echo "Try to update it with Keychain Access.app"
+                    echo "Try to update password of '$SNAME' with Keychain Access.app."
                     exit $rtn
                 fi
             else
