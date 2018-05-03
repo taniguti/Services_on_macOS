@@ -2,7 +2,6 @@
 
 iam=`basename "$0"`
 PNAME="/Library/Preferences/SystemConfiguration/com.apple.RemoteAccessServers.plist"
-PNAME="/tmp/com.apple.RemoteAccessServers.plist"
 
 function _readlink(){
     f=`basename "$1"`
