@@ -2,6 +2,7 @@
 
 iam=`basename "$0"`
 mode=help
+ERR_MSG='not_valid'
 
 function show_help(){
     cat <<_HELP
@@ -21,28 +22,28 @@ function check_address(){
     OCT4=`echo $1 | awk -F. '{print $4}'`
     OCT5=`echo $1 | awk -F. '{print $5}'`
 
-    if [ -z "$OCT1" ]; then echo not_valid ; exit 1 ;fi
-    if [ -z "$OCT2" ]; then echo not_valid ; exit 1 ;fi
-    if [ -z "$OCT3" ]; then echo not_valid ; exit 1 ;fi
-    if [ -z "$OCT4" ]; then echo not_valid ; exit 1 ;fi
-    if [ ! -z "$OCT5" ]; then echo not_valid ; exit 1 ;fi
+    if [ -z "$OCT1" ]; then echo $ERR_MSG ; exit 1 ;fi
+    if [ -z "$OCT2" ]; then echo $ERR_MSG ; exit 1 ;fi
+    if [ -z "$OCT3" ]; then echo $ERR_MSG ; exit 1 ;fi
+    if [ -z "$OCT4" ]; then echo $ERR_MSG ; exit 1 ;fi
+    if [ ! -z "$OCT5" ]; then echo $ERR_MSG ; exit 1 ;fi
 
     for p in $OCT1 $OCT2 $OCT3 $OCT4
     do
         expr $p + 1 > /dev/null 2>&1
         if [ $? -ne 0 ]; then
-            echo not_valid
+            echo $ERR_MSG
             exit 1 
         fi 
         if [ $p -lt 0 ]; then
-            echo not_valid ; exit 1
+            echo $ERR_MSG ; exit 1
         fi
     done
     
-    if ! [ $OCT1 -ge 0  -a  $OCT1 -le 255 ] ; then echo not_valid ; exit 1 ; fi
-    if ! [ $OCT2 -ge 0  -a  $OCT2 -le 255 ] ; then echo not_valid ; exit 1 ; fi
-    if ! [ $OCT3 -ge 0  -a  $OCT3 -le 255 ] ; then echo not_valid ; exit 1 ; fi
-    if ! [ $OCT4 -ge 0  -a  $OCT4 -le 255 ] ; then echo not_valid ; exit 1 ; fi
+    if ! [ $OCT1 -ge 0  -a  $OCT1 -le 255 ] ; then echo $ERR_MSG ; exit 1 ; fi
+    if ! [ $OCT2 -ge 0  -a  $OCT2 -le 255 ] ; then echo $ERR_MSG ; exit 1 ; fi
+    if ! [ $OCT3 -ge 0  -a  $OCT3 -le 255 ] ; then echo $ERR_MSG ; exit 1 ; fi
+    if ! [ $OCT4 -ge 0  -a  $OCT4 -le 255 ] ; then echo $ERR_MSG ; exit 1 ; fi
 
     echo "${OCT1}.${OCT2}.${OCT3}.${OCT4}"
 }
@@ -97,7 +98,7 @@ do
             ;;
         s)
             mode=calc
-            if [ `check_address ${OPTARG}` = not_valid ]; then
+            if [ `check_address ${OPTARG}` = $ERR_MSG ]; then
                 mode=help
             else
                 addr=${OPTARG}
@@ -106,11 +107,14 @@ do
         n)
             mode=calc
             expr ${OPTARG:-0} + 0 > /dev/null 2>&1
-            if [ $? -ne 0 ]; then mode=help ; fi
-            if [ ${OPTARG} -le 0 ]; then
+            if [ $? -ne 0 ]; then
                 mode=help
             else
-                num=${OPTARG}
+                if [ ${OPTARG} -le 0 ]; then
+                    mode=help
+                else
+                    num=${OPTARG}
+                fi
             fi
             ;;
         *)
