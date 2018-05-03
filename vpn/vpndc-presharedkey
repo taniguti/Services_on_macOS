@@ -7,17 +7,6 @@ SNAME='com.apple.net.racoon'
 PNAME="com.apple.RemoteAccessServers.plist"
 CDIR="/Library/Preferences/SystemConfiguration"
 
-function _readlink(){
-    f=`basename "$1"`
-    d=`cd $(dirname "$1"); pwd`
-    if [ -L "${d}/${f}" ]; then
-        r="`readlink -n \"${d}/${f}\"`"
-        _readlink "$r"
-    else
-        echo "${d}/${f}"
-    fi
-}
-
 function show_help(){
     cat <<_HELP
 
@@ -55,9 +44,6 @@ if [ `whoami` != root ]; then
     show_help
     exit 1
 fi
-
-fullpath_to_me=`_readlink "$0"`
-pathtome="`dirname \"$fullpath_to_me\"`"
 
 while getopts Cc:dhs sw
 do
