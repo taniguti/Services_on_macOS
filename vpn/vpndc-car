@@ -3,7 +3,6 @@
 iam=`basename "$0"`
 mode=show
 PNAME="/Library/Preferences/SystemConfiguration/com.apple.RemoteAccessServers.plist"
-MaximumSessions=`/usr/libexec/PlistBuddy -c "print Servers:com.apple.ppp.l2tp:Server:MaximumSessions" "$PNAME"`
 
 function _readlink(){
     f=`basename "$1"`
@@ -29,6 +28,15 @@ _HELP
 
 fullpath_to_me=`_readlink "$0"`
 pathtome="`dirname \"$fullpath_to_me\"`"
+
+if [ ! -f "$PNAME" ]; then
+    echo "Not found: $PNAME"
+    echo "This host is not configured yet."
+    show_help
+    exit 1
+fi
+
+MaximumSessions=`/usr/libexec/PlistBuddy -c "print Servers:com.apple.ppp.l2tp:Server:MaximumSessions" "$PNAME"`
 
 if [ $# = 0 ]; then
     show_help
