@@ -1,5 +1,10 @@
 #!/bin/bash
 
+iam=`basename "$0"`
+mode=set
+PNAME="/Library/Preferences/SystemConfiguration/com.apple.RemoteAccessServers.plist"
+PNAME="/tmp/com.apple.RemoteAccessServers.plist"
+
 function _readlink(){
     f=`basename "$1"`
     d=`cd $(dirname "$1"); pwd`
@@ -11,6 +16,57 @@ function _readlink(){
     fi
 }
 
-iam=`basename "$0"`
+function show_help(){
+    cat <<_HELP
+
+Usage::
+    $iam -n :
+    $iam -s :  DNS server address for vpn client.
+    $iam -h : Show this message.
+
+_HELP
+}
+
 fullpath_to_me=`_readlink "$0"`
 pathtome="`dirname \"$fullpath_to_me\"`"
+
+if [ $# = 0 ]; then
+    show_help
+    exit 1
+fi
+
+while getopts hn:s: sw
+do
+    case $sw in
+        n )
+            expr ${OPTARG:-0} + 0 > /dev/null 2>&1
+            if [ $? -ne 0 ]; then
+                mode=help
+            else
+                if [ ${OPTARG} -le 0 ]; then
+                    mode=help
+                else
+                    num=${OPTARG}
+                fi
+            fi
+            ;;
+        s )
+             rtn=`${pathtome}/ipcalc -c ${OPTARG}`
+             if [ ${rtn:-x} = 'not_valid' ]; then
+                mode=help
+             else
+                saddr=${OPTARG}
+             fi
+            ;;
+        * )
+            mode=help
+            ;;
+    esac
+done
+
+if [ $mode = help ]; then
+    show_help
+    exit 1
+fi
+
+eaddr=`${pathtome}/ipcalc -s ${saddr} -n $num`
