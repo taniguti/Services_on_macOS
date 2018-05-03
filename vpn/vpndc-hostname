@@ -1,0 +1,58 @@
+#!/bin/bash
+
+iam=`basename "$0"`
+PNAME="/Library/Preferences/SystemConfiguration/com.apple.RemoteAccessServers.plist"
+
+function show_help(){
+    cat <<_HELP
+
+Usage::
+    $iam -S <hostname>: Set VPN Access hostname or IP address.
+    $iam -s : Show VPN Access hostname.
+    $iam -h : Show this message.
+
+_HELP
+}
+
+function _readlink(){
+    f=`basename "$1"`
+    d=`cd $(dirname "$1"); pwd`
+    if [ -L "${d}/${f}" ]; then
+        r="`readlink -n \"${d}/${f}\"`"
+        _readlink "$r"
+    else
+        echo "${d}/${f}"
+    fi
+}
+
+if [ $# = 0 ]; then
+    show_help
+    exit 1
+fi
+
+fullpath_to_me=`_readlink "$0"`
+pathtome="`dirname \"$fullpath_to_me\"`"
+
+while getopts hsS: sw
+do
+    case $sw in
+        s )
+            /usr/libexec/PlistBuddy -c "print VPNHost" "$PNAME"
+            ;;
+        S )
+            if [ `whoami` != root ]; then
+                echo "You need administrator access to run this tool..."
+                show_help
+                exit 1
+            fi
+            H=${OPTARG}
+
+            VPNHOST=$H
+            /usr/libexec/PlistBuddy -c "delete VPNHost" "$PNAME" 2> /dev/null
+            /usr/libexec/PlistBuddy -c "add VPNHost string $VPNHOST" "$PNAME"
+            ;;
+        * )
+            show_help
+            ;;
+    esac
+done
