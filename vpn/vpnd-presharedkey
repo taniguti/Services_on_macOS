@@ -22,7 +22,8 @@ function show_help(){
     cat <<_HELP
 
 Usage::
-    $iam -c <preshared_key>: Replace preshared key with new one. If it is not set, set new one.
+    $iam -c <preshared_key>: Replace preshared key with new one.
+    $iam -C: Replace preshared key with new one which will created automatically.
     $iam -d: Delete preshared key.
     $iam -h: Show this message.
     $iam -s: Show preshared key for VPN service.
@@ -57,10 +58,10 @@ fi
 fullpath_to_me=`_readlink "$0"`
 pathtome="`dirname \"$fullpath_to_me\"`"
 
-while getopts cdhs sw
+while getopts Cc:dhs sw
 do
     case $sw in
-        c)
+        c|C)
             NEW_PSK="${OPTARG}"
             check
             if [ $isFile = yes ]; then
