@@ -1,9 +1,10 @@
 #!/bin/bash
 
 iam=`basename "$0"`
-mode=set
+mode=show
 PNAME="/Library/Preferences/SystemConfiguration/com.apple.RemoteAccessServers.plist"
 PNAME="/tmp/com.apple.RemoteAccessServers.plist"
+MaximumSessions=`/usr/libexec/PlistBuddy -c "print Servers:com.apple.ppp.l2tp:Server:MaximumSessions" "$PNAME"`
 
 function _readlink(){
     f=`basename "$1"`
@@ -20,8 +21,8 @@ function show_help(){
     cat <<_HELP
 
 Usage::
-    $iam -n :
-    $iam -s :  DNS server address for vpn client.
+    $iam -S <start_address> -n <num_of_session> : Set client address range. 0 < num_of_session <= 128
+    $iam -s : Show client address range.
     $iam -h : Show this message.
 
 _HELP
@@ -35,7 +36,7 @@ if [ $# = 0 ]; then
     exit 1
 fi
 
-while getopts hn:s: sw
+while getopts hn:sS: sw
 do
     case $sw in
         n )
@@ -43,20 +44,24 @@ do
             if [ $? -ne 0 ]; then
                 mode=help
             else
-                if [ ${OPTARG} -le 0 ]; then
-                    mode=help
-                else
+                if [ ${OPTARG} -gt 0 -a ${OPTARG} -le ${MaximumSessions:-128} ]; then
                     num=${OPTARG}
+                else
+                    mode=help
                 fi
             fi
             ;;
-        s )
+        S )
              rtn=`${pathtome}/ipcalc -c ${OPTARG}`
              if [ ${rtn:-x} = 'not_valid' ]; then
                 mode=help
              else
+                mode=set
                 saddr=${OPTARG}
              fi
+            ;;
+        s )
+            mode=show
             ;;
         * )
             mode=help
@@ -64,9 +69,36 @@ do
     esac
 done
 
-if [ $mode = help ]; then
-    show_help
-    exit 1
-fi
-
-eaddr=`${pathtome}/ipcalc -s ${saddr} -n $num`
+case $mode in
+    help )
+        show_help
+        exit 1
+        ;;
+    show )
+        start_addr=`/usr/libexec/PlistBuddy -c "print Servers:com.apple.ppp.l2tp:IPv4:DestAddressRanges:0" "$PNAME" 2> /dev/null`
+        rtn=$?
+        end_addr=`/usr/libexec/PlistBuddy -c "print Servers:com.apple.ppp.l2tp:IPv4:DestAddressRanges:1" "$PNAME" 2> /dev/null`
+        rtn=`expr $? + ${rtn:-0}`
+        if [ $rtn -eq 0 ]; then
+            echo "From: $start_addr"
+            echo "to:   $end_addr"
+        else
+            echo "Not configured yet."
+        fi 
+        ;;
+    set )
+        if [ `whoami` != root ]; then
+            echo "You need administrator access to run this tool..."
+            echo ""
+            show_help
+            exit 1
+        fi
+        n=`expr $num - 1`
+        eaddr=`${pathtome}/ipcalc -s ${saddr} -n $n`
+        
+        /usr/libexec/PlistBuddy -c "delete Servers:com.apple.ppp.l2tp:IPv4:DestAddressRanges" "$PNAME" 2> /dev/null
+        /usr/libexec/PlistBuddy -c "add Servers:com.apple.ppp.l2tp:IPv4:DestAddressRanges array" "$PNAME"
+        /usr/libexec/PlistBuddy -c "add Servers:com.apple.ppp.l2tp:IPv4:DestAddressRanges:0 string $saddr" "$PNAME"
+        /usr/libexec/PlistBuddy -c "add Servers:com.apple.ppp.l2tp:IPv4:DestAddressRanges:1 string $eaddr" "$PNAME"
+        ;;
+esac
