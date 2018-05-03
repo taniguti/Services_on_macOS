@@ -3,7 +3,6 @@
 iam=`basename "$0"`
 mode=show
 PNAME="/Library/Preferences/SystemConfiguration/com.apple.RemoteAccessServers.plist"
-PNAME="/tmp/com.apple.RemoteAccessServers.plist"
 MaximumSessions=`/usr/libexec/PlistBuddy -c "print Servers:com.apple.ppp.l2tp:Server:MaximumSessions" "$PNAME"`
 
 function _readlink(){
