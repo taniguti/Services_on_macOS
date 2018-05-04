@@ -81,14 +81,13 @@ args=$@
 
 chkcond
 if [ ${subcmd}x = x ]; then $subcmd=help ; fi
-if [ ${isHelp}x = helpx ]; then args='-h'; fi
+if [ ${isHelp:-'help'} = help ]; then args='-h'; fi
 case $subcmd in
     show-confing | show )
         chkconfig
         ;;
-    presharedkey | psk | client-address-range | car | dns | hostname )
-        if [ ${isHelp}x = x ]; then args='-h'; fi
-        case "${args:-'-h'}" in
+    presharedkey | psk | client-address-range | car | dns | hostname | profile )
+        case "${args}" in
             '-h' )
                 : no check
                 ;;
@@ -100,7 +99,7 @@ case $subcmd in
                 chkroot
                 ;;
         esac
-        "${pathtome}/${subcmd}" ${args:-'-h'}
+        "${pathtome}/${subcmd}" ${args}
         ;;
     start )
         chkconfig
@@ -131,8 +130,7 @@ case $subcmd in
         launchctl kill HUP $service_domain
         ;;
     migrate | init )
-        if [ ${isHelp}x = x ]; then args='-h'; fi
-        case "${args:-'-h'}" in
+        case "${args:='-h'}" in
             '-h' )
                 : no check
                 ;;
@@ -150,12 +148,7 @@ case $subcmd in
             echo "Execute migration."
             args='-m'
         fi
-        "${pathtome}/setup-vpnd" ${args}
-        ;;
-    profile )
-        chkconfig
-        chkroot
-        "${pathtome}/vpn-profile" ${args:-'-h'}
+        "${pathtome}/${subcmd}" ${args}
         ;;
     * )
         showhelp
