@@ -11,6 +11,102 @@ function _readlink(){
     fi
 }
 
+function show_help(){
+    cat <<_HELP
+
+Usage::
+    $iam -i [-f] : Initial setup. for Standard macOS. '-f' will make reset and then initial setup.
+    $iam -m [-f] : Migrate from macOS Server's VPN service. '-f' will as same as '-i -f'.
+    $iam -h : Show this message.
+
+_HELP
+}
+
 iam=`basename "$0"`
 fullpath_to_me=`_readlink "$0"`
 pathtome="`dirname \"$fullpath_to_me\"`"
+SYSCONFDIR="/Library/Preferences/SystemConfiguration"
+LAUNCHDIR="/Library/LaunchDaemons/"
+PNAME="com.apple.RemoteAccessServers.plist"
+LAUNCHPLIST="vpn.ppp.l2tp.plist"
+TEMPDIR="${pathtome}/templates"
+mode=help
+etype=migrate
+
+if [ $# = 0 ]; then show_help ; exit 1 ; fi
+while getopts fimh sw
+do
+    case $sw in
+        f )
+            mode=force
+            ;;
+        i )
+            etype=init
+            ;;
+        m )
+            etype=migrate
+            ;;
+        * )
+            show_help
+            exit 1
+            ;;
+    esac
+done
+
+if [ `whoami` != root ]; then
+    echo "You need administrator access to run this tool..."
+    show_help
+    exit 1
+fi
+
+if [ $mode = force ]; then
+    etype=init
+
+    : stop vpnd
+
+    rm -f "${SYSCONFDIR}/${PNAME}"
+    rm -f "${LAUNCHDIR}/${LAUNCHPLIST}"
+fi
+
+case $etype in
+    init )
+        if [ -f "${SYSCONFDIR}/${PNAME}" -o -f "${LAUNCHDIR}/${LAUNCHPLIST}" ]; then
+            echo "VPN service is already configured."
+            echo "Abort!"
+            show_help
+            exit 1
+        fi
+
+        DNSSERVERS="`awk '$1 == "nameserver" {print $2}' /etc/resolv.conf | tr '\n' ','| tr -d [:blank:]`"
+        if [ `echo "$SEARCH" | wc -c` -ne 0 ]; then
+            echo "VPN service is already configured."
+            echo "No name server found in /etc/resolv.conf"
+            echo "Abort!"
+            exit 1
+        fi
+
+        SEARCH="`awk '$1 == "search" {$1="";print $0}' /etc/resolv.conf | tr '\n' ',' | tr -d [:blank:]`"
+        if [ `echo "$SEARCH" | wc -c` -ne 0 ]; then
+            SEARCH=''
+        else
+            SEARCH='-D $SEARCH'
+        fi
+
+        : ask parms
+
+        cp "${TEMPDIR}/${PNAME}" "${SYSCONFDIR}/${PNAME}"
+        cp "${TEMPDIR}/${LAUNCHPLIST}" "${LAUNCHDIR}/${LAUNCHPLIST}"
+        chmod 644 "${SYSCONFDIR}/${PNAME}"
+        chmod 644 "${LAUNCHDIR}/${LAUNCHPLIST}"
+        chown 0:0 "${SYSCONFDIR}/${PNAME}"
+        chown 0:0 "${LAUNCHDIR}/${LAUNCHPLIST}"
+
+        "${pathtome}/vpndc-dns" -d $DNSSERVERS $SEARCH
+        "${pathtome}/vpndc-hostname" -S $VPNHOST
+        "${pathtome}/vpndc-car" -S $IPADDR -n $NUM
+        "${pathtome}/vpndc-presharedkey" -C
+
+        ;;
+    migrate )
+        ;;
+esac
