@@ -130,25 +130,27 @@ case $subcmd in
         chkroot
         launchctl kill HUP $service_domain
         ;;
-    migrate )
-        chkconfig init
-        chkroot
+    migrate | init )
+        if [ ${isHelp}x = x ]; then args='-h'; fi
+        case "${args:-'-h'}" in
+            '-h' )
+                : no check
+                ;;
+            * )
+                chkconfig
+                chkroot
+                ;;
+        esac
         if [ ! -f "$vpn_config" ]; then
             echo "Not found ${vpn_config}."
             echo "Execute initial setup."
-            "${pathtome}/setup-vpnd" -i
-        fi
-        "${pathtome}/setup-vpnd" ${args:-'-m'}
-        ;;
-    init )
-        chkconfig init
-        chkroot
-        if [ -f "$vpn_config" ]; then
+            args='-i'
+        else
             echo "Found ${vpn_config}."
-            echo "Try migrate..."
-            "${pathtome}/setup-vpnd" -m
+            echo "Execute migration."
+            args='-m'
         fi
-        "${pathtome}/setup-vpnd" ${args:-'-i'}
+        "${pathtome}/setup-vpnd" ${args}
         ;;
     profile )
         chkconfig
