@@ -69,6 +69,7 @@ function chkroot(){
 vpn_config="/Library/Preferences/SystemConfiguration/com.apple.RemoteAccessServers.plist"
 plist_file="/Library/LaunchDaemons/vpn.ppp.l2tp.plist"
 service_domain="system/vpn.ppp.l2tp"
+
 iam=`basename "$0"`
 fullpath_to_me=`_readlink "$0"`
 pathtome="`dirname \"$fullpath_to_me\"`"
@@ -86,6 +87,7 @@ case $subcmd in
         chkconfig
         ;;
     presharedkey | psk | client-address-range | car | dns | hostname )
+        if [ ${isHelp}x = x ]; then args='-h'; fi
         case "${args:-'-h'}" in
             '-h' )
                 : no check
