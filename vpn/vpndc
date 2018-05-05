@@ -68,7 +68,7 @@ function chkconfig(){
 function chkroot(){
     if [ $isRoot != "yes" ]; then
         echo "Use me with 'sudo'"
-        echo "sudo $iam $subcmd"
+        echo "sudo $iam $subcmd $args"
         exit 1
     fi
 }
