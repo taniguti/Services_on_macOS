@@ -16,7 +16,7 @@ function showhelp(){
 
 Configuration:
     $iam [show-config|show]      : Show current vpn configuration.
-    $iam [presharedkey|psk]      : Configure preshared key. 
+    $iam [presharedkey|psk]      : Configure preshared key.
     $iam [client-address-range|car] : Configure IP address range for VPN clients
     $iam [hostname] : Configure access hostname
 
@@ -80,12 +80,12 @@ args=$@
 
 chkcond
 if [ ${subcmd}x = x ]; then $subcmd=help ; fi
-if [ ${isHelp:-'help'} = help ]; then args='-h'; fi
 case $subcmd in
     show-confing | show )
         chkconfig
         ;;
     presharedkey | psk | client-address-range | car | dns | hostname | profile )
+        if [ ${isHelp:-'help'} = help ]; then args='-h'; fi
         case "${args}" in
             '-h' )
                 : no check
@@ -100,35 +100,8 @@ case $subcmd in
         esac
         "${pathtome}/${subcmd}" ${args}
         ;;
-    start )
-        chkconfig
-        chkroot
-        launchctl kickstart -p $service_domain
-        ;;
-    stop )
-        chkconfig
-        chkroot
-        launchctl disable $service_domain
-        ;;
-    status )
-        chkconfig
-        launchctl print $service_domain | awk '$1 == "state" {print $3}'
-        ;;
-    fullstatus )
-        chkconfig
-        launchctl print $service_domain
-        ;; 
-    restart )
-        chkconfig
-        chkroot
-        launchctl kickstart -k $service_domain
-        ;;
-    relaod )
-        chkconfig
-        chkroot
-        launchctl kill HUP $service_domain
-        ;;
     migrate | init )
+        if [ ${isHelp:-'help'} = help ]; then args='-h'; fi
         case "${args:='-h'}" in
             '-h' )
                 : no check
@@ -138,18 +111,48 @@ case $subcmd in
                 chkroot
                 ;;
         esac
-        if [ ! -f "$vpn_config" ]; then
-            echo "Not found ${vpn_config}."
-            echo "Execute initial setup."
-            args='-i'
-        else
-            echo "Found ${vpn_config}."
-            echo "Execute migration."
-            args='-m'
+        if [ $args != '-h' ]; then
+            if [ ! -f "$vpn_config" ]; then
+                echo "Not found ${vpn_config}."
+                echo "Execute initial setup."
+                args='-i'
+            else
+                echo "Found ${vpn_config}."
+                echo "Execute migration."
+                args='-m'
+            fi
         fi
         "${pathtome}/${subcmd}" ${args}
         ;;
     * )
-        showhelp
+        case "${args}" in
+            '-h' )
+                showhelp
+                ;;
+            * )
+                chkconfig
+                chkroot
+                case ${subcmd} in
+                    start )
+                        launchctl kickstart -p $service_domain
+                        ;;
+                    stop )
+                        launchctl disable $service_domain
+                        ;;
+                    status )
+                        launchctl print $service_domain | awk '$1 == "state" {print $3}'
+                        ;;
+                    fullstatus )
+                        launchctl print $service_domain
+                        ;;
+                    restart )
+                        launchctl kickstart -k $service_domain
+                        ;;
+                    relaod )
+                        launchctl kill HUP $service_domain
+                        ;;
+                esac
+                ;;
+        esac
         ;;
 esac
