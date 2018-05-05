@@ -15,21 +15,21 @@ function showhelp(){
     cat << _HELP
 
 Configuration:
-    $iam [show-config|show]      : Show current vpn configuration.
-    $iam [presharedkey|psk]      : Configure preshared key.
+    $iam [show-config|show] : Show current vpn configuration.
+    $iam [presharedkey|psk] : Configure preshared key.
     $iam [client-address-range|car] : Configure IP address range for VPN clients
     $iam [hostname] : Configure access hostname
 
 Control:
-    $iam start   : Start VPN service
-    $iam stop    : Stop VPN service
-    $iam [status|fullstatus]  : Show status of VPN service.
+    $iam start : Start VPN service
+    $iam stop : Stop VPN service
+    $iam [status|fullstatus] : Show status of VPN service.
     $iam restart : Restart VPN service
-    $iam reload  : Reload configuration
+    $iam reload : Reload configuration
 
 Setup/Migrate/Deploy:
     $iam migrate : Migrate VPN service from macOS Server to macOS. $iam helps your VPN Service instaed of serveradmin.
-    $iam init    : Setup VPN service for macOS initially.
+    $iam init : Setup VPN service for macOS initially.
     $iam profile : Export configuration profile for VPN Service
 
 _HELP
@@ -73,74 +73,90 @@ iam=`basename "$0"`
 fullpath_to_me=`_readlink "$0"`
 pathtome="`dirname \"$fullpath_to_me\"`"
 
-subcmd=`echo $1 | tr [:upper:] [:lower:]`
-isHelp=`echo $2 | tr [:upper:] [:lower:]`
+subcmd=`echo -- $1 | awk '{print $NF}' | tr [:upper:] [:lower:]`
+isHelp=`echo -- $2 | awk '{print $NF}' | tr [:upper:] [:lower:]`
 shift
 args=$@
 
 chkcond
-if [ ${subcmd}x = x ]; then $subcmd=help ; fi
+if [ ${subcmd}x = x ]; then subcmd=help ; fi
+if [ ${subcmd} = help ]; then args='-h' ; fi
 case $subcmd in
     show-confing | show )
         chkconfig
-        ;;
-    presharedkey | psk | client-address-range | car | dns | hostname | profile )
-        if [ ${isHelp:-'help'} = help ]; then args='-h'; fi
-        case "${args}" in
-            '-h' )
-                : no check
-                ;;
-            '-s' )
-                chkconfig
-                ;;
-            * )
-                chkconfig
-                chkroot
-                ;;
-        esac
-        "${pathtome}/${subcmd}" ${args}
-        ;;
-    migrate | init )
-        if [ ${isHelp:-'help'} = help ]; then args='-h'; fi
-        case "${args:='-h'}" in
-            '-h' )
-                : no check
-                ;;
-            * )
-                chkconfig
-                chkroot
-                ;;
-        esac
-        if [ $args != '-h' ]; then
-            if [ ! -f "$vpn_config" ]; then
-                echo "Not found ${vpn_config}."
-                echo "Execute initial setup."
-                args='-i'
-            else
-                echo "Found ${vpn_config}."
-                echo "Execute migration."
-                args='-m'
-            fi
+        VPNHOST=`${pathtome}/vpndc-hostname -s`
+        DNSINFO=`${pathtome}/vpndc-dns -s | awk '{print " "$0}'`
+        ADDRINFO=`${pathtome}/vpndc-car -s | awk '{print " "$0}'`
+
+        cat << _CONFIG
+
+VPN service hostname: $VPNHOST
+IP addresses for VPN Clients:
+$ADDRINFO
+DNS for VPN client:
+$DNSINFO
+Preshared Key: << Type 'sudo vpndc presharedkey -s' >>
+
+_CONFIG
+
+    ;;
+presharedkey | psk | client-address-range | car | dns | hostname | profile )
+    if [ ${isHelp:-'help'} = help ]; then args='-h'; fi
+    case "${args}" in
+        '-h' )
+            : no check
+            ;;
+        '-s' )
+            chkconfig
+            ;;
+        * )
+            chkconfig
+            chkroot
+            ;;
+    esac
+    "${pathtome}/${subcmd}" ${args}
+    ;;
+migrate | init )
+    if [ ${isHelp:-'help'} = help ]; then args='-h'; fi
+    case "${args:='-h'}" in
+        '-h' )
+            : no check
+            ;;
+        * )
+            chkconfig
+            chkroot
+            ;;
+    esac
+    if [ $args != '-h' ]; then
+        if [ ! -f "$vpn_config" ]; then
+            echo "Not found ${vpn_config}."
+            echo "Execute initial setup."
+            args='-i'
+        else
+            echo "Found ${vpn_config}."
+            echo "Execute migration."
+            args='-m'
         fi
-        "${pathtome}/${subcmd}" ${args}
-        ;;
-    * )
-        case "${args}" in
-            '-h' )
-                showhelp
-                ;;
-            * )
-                chkconfig
-                chkroot
-                case ${subcmd} in
-                    start )
-                        launchctl load -w "$plist_file"
-                        ;;
-                    stop )
-                        launchctl unload -w "$plist_file"
-                        ;;
-                    status | fullstatus )
-                        launchctl print $service_domain > /dev/null 2>&1
+    fi
+    "${pathtome}/${subcmd}" ${args}
+    ;;
+start | stop | status | fullstatus | restart | reload )
+    case "${args}" in
+        '-h' )
+            showhelp
+            ;;
+        * )
+            chkconfig
+            chkroot
+            case ${subcmd} in
+                start )
+                    launchctl load -w "$plist_file"
+                    ;;
+                stop )
+                    launchctl unload -w "$plist_file"
+                    ;;
+                status | fullstatus )
+                    launchctl print $service_domain > /dev/null 2>&1
                         rtn=$?
                         if [ $rtn -ne 0 ]; then
                             echo "not running"
@@ -161,5 +177,8 @@ case $subcmd in
                 esac
                 ;;
         esac
+        ;;
+    * )
+        showhelp
         ;;
 esac

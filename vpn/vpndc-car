@@ -19,7 +19,7 @@ function show_help(){
     cat <<_HELP
 
 Usage::
-    $iam -S <start_address> -n <num_of_session> : Set client address range. 0 < num_of_session <= 128
+    $iam -S <start_address> -n <num_of_address> : Set client address range. 0 < num_of_address <= 128
     $iam -s : Show client address range.
     $iam -h : Show this message.
 
@@ -94,13 +94,18 @@ case $mode in
         fi 
         ;;
     set )
+        if [ ${num:-x} = x ]; then
+            echo "Number of IP addesses is required."
+            show_help
+            exit 1
+        fi
+        n=`expr $num - 1`
         if [ `whoami` != root ]; then
             echo "You need administrator access to run this tool..."
             echo ""
             show_help
             exit 1
         fi
-        n=`expr $num - 1`
         eaddr=`${pathtome}/ipcalc -s ${saddr} -n $n`
         
         /usr/libexec/PlistBuddy -c "delete Servers:com.apple.ppp.l2tp:IPv4:DestAddressRanges" "$PNAME" 2> /dev/null

@@ -7,8 +7,8 @@ function show_help(){
     cat <<_HELP
 
 Usage::
-    $iam -S <hostname>: Set VPN Access hostname or IP address.
-    $iam -s : Show VPN Access hostname.
+    $iam -n <hostname>: Hostname for VPN service
+    $iam -s : Show VPN hostname.
     $iam -h : Show this message.
 
 _HELP
@@ -26,13 +26,10 @@ if [ $# = 0 ]; then
     exit 1
 fi
 
-while getopts hsS: sw
+while getopts hn:s sw
 do
     case $sw in
-        s )
-            /usr/libexec/PlistBuddy -c "print VPNHost" "$PNAME"
-            ;;
-        S )
+        n )
             if [ `whoami` != root ]; then
                 echo "You need administrator access to run this tool..."
                 show_help
@@ -42,6 +39,9 @@ do
             VPNHOST="${OPTARG}"
             /usr/libexec/PlistBuddy -c "delete VPNHost" "$PNAME" 2> /dev/null
             /usr/libexec/PlistBuddy -c "add VPNHost string $VPNHOST" "$PNAME"
+            ;;
+        s )
+            /usr/libexec/PlistBuddy -c "print VPNHost" "$PNAME"
             ;;
         * )
             show_help
