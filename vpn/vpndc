@@ -134,16 +134,23 @@ case $subcmd in
                 chkroot
                 case ${subcmd} in
                     start )
-                        launchctl kickstart -p $service_domain
+                        launchctl load -w "$plist_file"
                         ;;
                     stop )
-                        launchctl disable $service_domain
+                        launchctl unload -w "$plist_file"
                         ;;
-                    status )
-                        launchctl print $service_domain | awk '$1 == "state" {print $3}'
-                        ;;
-                    fullstatus )
-                        launchctl print $service_domain
+                    status | fullstatus )
+                        launchctl print $service_domain > /dev/null 2>&1
+                        rtn=$?
+                        if [ $rtn -ne 0 ]; then
+                            echo "not running"
+                            exit $rtn
+                        fi
+                        if [ ${subcmd} = status ]; then
+                            launchctl print $service_domain | awk '$1 == "state" {print $3}'
+                        else
+                            launchctl print $service_domain
+                        fi
                         ;;
                     restart )
                         launchctl kickstart -k $service_domain
