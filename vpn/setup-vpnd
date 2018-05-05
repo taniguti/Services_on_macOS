@@ -34,6 +34,39 @@ function stop_vpnd(){
     launchctl unload -w $service_domain >> $LOG 2>&1
 }
 
+function ask_parms(){
+    cat <<_INST
+
+New configuration parameters are required.
+- VPN hostname.
+- Starting IP address for VPN client
+-  and number of addresses for it.
+
+_INST
+
+    while true
+    do
+        read -p "Enter VPN Hostname: " VPNHOST
+        if [ ${VPNHOST:-x} = x ]; then continue ; fi
+        break
+    done
+    while true
+    do
+        read -p "Enter start at IP address: " IPADDR
+        if [ ${IPADDR:-x} = x ]; then continue ; fi
+        if [ `"${pathtome}/ipcalc" -c $IPADDR` = "not_valid" ]; then continue ; fi
+        break
+    done
+    while true
+    do
+        read -p "Enter number of address: " NUM
+        if [ ${NUM:-x} = x ]; then continue ; fi
+        expr $NUM + 1 > /dev/null 2>&1
+        if [ $? -ne 0 ]; then continue ; fi
+        break
+    done
+}
+
 iam=`basename "$0"`
 fullpath_to_me=`_readlink "$0"`
 pathtome="`dirname \"$fullpath_to_me\"`"
@@ -88,21 +121,20 @@ case $etype in
         fi
 
         DNSSERVERS="`awk '$1 == "nameserver" {print $2}' /etc/resolv.conf | tr '\n' ','| tr -d [:blank:]`"
-        if [ `echo "$SEARCH" | wc -c` -ne 0 ]; then
-            echo "VPN service is already configured."
+        if [ `echo "$DNSSERVERS" | wc -c` -eq 0 ]; then
             echo "No name server found in /etc/resolv.conf"
             echo "Abort!"
             exit 1
         fi
 
-        SEARCH="`awk '$1 == "search" {$1="";print $0}' /etc/resolv.conf | tr '\n' ',' | tr -d [:blank:]`"
-        if [ `echo "$SEARCH" | wc -c` -ne 0 ]; then
+        SEARCH="`awk '$1 == "search" {$1="";print $0}' /etc/resolv.conf | tr '\n' ',' | tr [:blank:] ','`"
+        if [ `echo "$SEARCH" | wc -c` -eq 0 ]; then
             SEARCH=''
         else
-            SEARCH='-D $SEARCH'
+            SEARCH="-D $SEARCH"
         fi
 
-        : ask parms
+        ask_parms
 
         cp "${TEMPDIR}/${PNAME}" "${SYSCONFDIR}/${PNAME}"
         cp "${TEMPDIR}/${LAUNCHPLIST}" "${LAUNCHDIR}/${LAUNCHPLIST}"
@@ -114,7 +146,7 @@ case $etype in
         "${pathtome}/vpndc-dns" -d $DNSSERVERS $SEARCH
         "${pathtome}/vpndc-hostname" -S $VPNHOST
         "${pathtome}/vpndc-car" -S $IPADDR -n $NUM
-        "${pathtome}/vpndc-presharedkey" -C
+        "${pathtome}/vpndc-presharedkey" -C > /dev/null 2>&1
 
         ;;
     migrate )
@@ -132,6 +164,14 @@ case $etype in
 esac
 
 launchctl load -w "${LAUNCHDIR}/${LAUNCHPLIST}" > /dev/null 2>&1
+T=10
+/bin/echo -n "Starting VPN Service. Wait $T seconds"
+for n in `seq 1 $T`
+do
+    /bin/echo -n '. '
+    sleep 1
+done
+echo ""
 vpnstatus=`${pathtome}/vpndc status`
 if [ $vpnstatus = 'running' ]; then
     echo "Good! Your VPN service is now ${vpnstatus}."
