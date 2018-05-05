@@ -22,11 +22,21 @@ Usage::
 _HELP
 }
 
+function stop_vpnd(){
+    LOG=/tmp/stop_vpnd.log
+    service_domain="system/vpn.ppp.l2tp"
+    SA="/Applications/Server.app/Contents/ServerRoot/usr/sbin/serveradmin"
+    if [ -x "$SA" ]; then
+        $SA stop vpn >> $LOG 2>&1
+    fi
+    launchctl disable $service_domain >> $LOG 2>&1
+}
+
 iam=`basename "$0"`
 fullpath_to_me=`_readlink "$0"`
 pathtome="`dirname \"$fullpath_to_me\"`"
 SYSCONFDIR="/Library/Preferences/SystemConfiguration"
-LAUNCHDIR="/Library/LaunchDaemons/"
+LAUNCHDIR="/Library/LaunchDaemons"
 PNAME="com.apple.RemoteAccessServers.plist"
 LAUNCHPLIST="vpn.ppp.l2tp.plist"
 TEMPDIR="${pathtome}/templates"
@@ -61,9 +71,7 @@ fi
 
 if [ $mode = force ]; then
     etype=init
-
-    : stop vpnd
-
+    stop_vpnd
     rm -f "${SYSCONFDIR}/${PNAME}"
     rm -f "${LAUNCHDIR}/${LAUNCHPLIST}"
 fi
@@ -108,5 +116,17 @@ case $etype in
 
         ;;
     migrate )
+        #if [ -f "${LAUNCHDIR}/${LAUNCHPLIST}" ]; then
+        #    echo "VPN service is already configured."
+        #    echo "Abort!"
+        #    show_help
+        #    exit 1
+        #fi
+        stop_vpnd
+        cp "${TEMPDIR}/${LAUNCHPLIST}" "${LAUNCHDIR}/${LAUNCHPLIST}"
+        chmod 644 "${LAUNCHDIR}/${LAUNCHPLIST}"
+        chown 0:0 "${LAUNCHDIR}/${LAUNCHPLIST}"
+        launchctl load "${LAUNCHDIR}/${LAUNCHPLIST}"
+        echo "Type 'sudo vpndc start' to start your VPN service."
         ;;
 esac
