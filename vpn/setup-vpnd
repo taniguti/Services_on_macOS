@@ -151,7 +151,7 @@ case $etype in
         chown 0:0 "${LAUNCHDIR}/${LAUNCHPLIST}"
 
         "${pathtome}/vpndc-dns" -d $DNSSERVERS $SEARCH
-        "${pathtome}/vpndc-hostname" -S $VPNHOST
+        "${pathtome}/vpndc-hostname" -n $VPNHOST
         "${pathtome}/vpndc-car" -S $IPADDR -n $NUM
         "${pathtome}/vpndc-presharedkey" -C > /dev/null 2>&1
 
