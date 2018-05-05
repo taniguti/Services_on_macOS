@@ -4,9 +4,16 @@ iam=`basename "$0"`
 PNAME="/Library/Preferences/SystemConfiguration/com.apple.RemoteAccessServers.plist"
 
 function _readlink(){
-    f=`basename "$1"`
-    d=`cd $(dirname "$1"); pwd`
+    c="$1"
+    f=`basename "$c"`
+    if [ "`type -a "$c" 2> /dev/null| head -1`"x = x ]; then
+        d=`cd $(dirname "$c"); pwd`
+    else
+        p=`type -a "$c" | head -1 | awk '{$1="";$2=""; print $0}'| sed 's/^[ \t]*//'`
+        d=`dirname "$p"`
+    fi
     if [ -L "${d}/${f}" ]; then
+        cd "${d}"
         r="`readlink -n \"${d}/${f}\"`"
         _readlink "$r"
     else
