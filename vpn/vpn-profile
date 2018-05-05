@@ -101,7 +101,7 @@ do
             $PB -c "add PayloadContent:0:PayloadDescription string VPN settings for $ORGNAME" "$MNAME"
 
             $PB -c "add PayloadContent:0:IPv4 dict" "$MNAME"
-            $PB -c "add PayloadContent:0:IPv4:OverridePrimary integer 0" "$MNAME"
+            $PB -c "add PayloadContent:0:IPv4:OverridePrimary integer 1" "$MNAME"
 
             $PB -c "add PayloadContent:0:IPSec dict" "$MNAME"
             $PB -c "add PayloadContent:0:IPSec:SharedSecret data $PSK" "$MNAME"
