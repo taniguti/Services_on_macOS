@@ -8,8 +8,8 @@ Additionally it sets VPN service on standard macOS.
 Clone and create symlink to vpndc.
 ```
 cd /usr/local/share
-git clone https://github.com/taniguti/Services_on_macOS.git
-sudo ln -s /usr/local/share/Services_on_macOS/vpn/vpndc /usr/local/sbin
+sudo git clone https://github.com/taniguti/Services_on_macOS.git
+sudo ln -s /usr/local/share/Services_on_macOS/vpn/vpndc /usr/local/sbin/
 ```
 
 # vpndc help
