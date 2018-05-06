@@ -89,7 +89,7 @@ chkcond
 if [ ${subcmd}x = x ]; then subcmd=help ; fi
 if [ ${subcmd} = help ]; then args='-h' ; fi
 case $subcmd in
-    show-confing | show )
+    show-config | show )
         chkconfig
         VPNHOST=`${pathtome}/vpndc-hostname -s`
         DNSINFO=`${pathtome}/vpndc-dns -s | awk '{print " "$0}'`
