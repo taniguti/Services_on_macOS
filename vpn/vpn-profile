@@ -1,0 +1,143 @@
+#!/bin/bash
+
+function _readlink(){
+    c="$1"
+    f=`basename "$c"`
+    if [ "`type -a "$c" 2> /dev/null| head -1`"x = x ]; then
+        d=`cd $(dirname "$c"); pwd`
+    else
+        p=`type -a "$c" | head -1 | awk '{$1="";$2=""; print $0}'| sed 's/^[ \t]*//'`
+        d=`dirname "$p"`
+    fi
+    if [ -L "${d}/${f}" ]; then
+        cd "${d}"
+        r="`readlink -n \"${d}/${f}\"`"
+        _readlink "$r"
+    else
+        echo "${d}/${f}"
+    fi
+}
+
+function show_help(){
+    cat <<_HELP
+
+Usage::
+    $iam -d <output_directory> : Output directory. if not exist, create automatically.
+    $iam -h : Show this message.
+
+_HELP
+}
+
+if [ $# = 0 ]; then
+    show_help
+    exit 1
+fi
+
+iam=`basename "$0"`
+fullpath_to_me=`_readlink "$0"`
+pathtome="`dirname \"$fullpath_to_me\"`"
+PNAME="/Library/Preferences/SystemConfiguration/com.apple.RemoteAccessServers.plist"
+
+if [ ! -f "$PNAME" ]; then
+    echo "Not found: $PNAME"
+    echo "This host is not configured yet."
+    show_help
+    exit 1
+fi
+
+while getopts d:h sw
+do
+    case $sw in
+        d )
+            if [ `whoami` != root ]; then
+                echo "You need administrator access to run this tool..."
+                show_help
+                exit 1
+            fi
+
+            odir="${OPTARG}"
+            mkdir -p "$odir"
+            if [ ! -d "$odir" ]; then
+                echo "Failed to get ${odir}."
+                echo "Abort!"
+                exit 1
+            fi
+
+            VPNHOST=`"${pathtome}/vpndc-hostname" -s`
+            if [ "$VPNHOST"X = X ]; then
+                echo "Failed to get your VPN hostname."
+                echo "Abort!"
+                exit 1
+            fi
+            PSK=`"${pathtome}/vpndc-presharedkey" -s`
+            if [ "$PSK"X = X ]; then
+                echo "Failed to get presharedkey for VPN service."
+                echo "Abort!"
+                exit 1
+            fi
+
+            MNAME="${odir}/VPN-$VPNHOST.mobileconfig"
+            ORGNAME=`echo "$VPNHOST" | awk -F. '{$1=""; print $0}' | sed 's/^[ \t]*//' | tr ' ' '.'`
+            UUID1=`uuidgen`
+            UUID2=`uuidgen`
+
+            if [ -f "$MNAME" ]; then
+                mv "$MNAME" "$MNAME".`date +%F-%T`
+            fi
+
+            PB="/usr/libexec/PlistBuddy"
+
+            $PB -c "add PayloadDisplayName string VPN-$VPNHOST" "$MNAME" > /dev/null
+            $PB -c "add PayloadDescription string VPN settings for $ORGNAME" "$MNAME"
+            $PB -c "add PayloadIdentifier string $ORGNAME-vpn.l2tp-$VPNHOST" "$MNAME"
+            $PB -c "add PayloadOrganization string ${ORGNAME}" "$MNAME"
+            $PB -c "add PayloadType string Configuration" "$MNAME"
+            $PB -c "add PayloadUUID string ${UUID1}" "$MNAME"
+            $PB -c "add PayloadVersion integer 1" "$MNAME"
+
+            $PB -c "add PayloadContent array" "$MNAME"
+            $PB -c "add PayloadContent:0 dict" "$MNAME"
+            $PB -c "add PayloadContent:0:PayloadDisplayName string VPN ($VPNHOST)" "$MNAME"
+            $PB -c "add PayloadContent:0:PayloadDescription string VPN settings for $ORGNAME" "$MNAME"
+
+            $PB -c "add PayloadContent:0:IPv4 dict" "$MNAME"
+            $PB -c "add PayloadContent:0:IPv4:OverridePrimary integer 1" "$MNAME"
+
+            $PB -c "add PayloadContent:0:IPSec dict" "$MNAME"
+            $PB -c "add PayloadContent:0:IPSec:SharedSecret data $PSK" "$MNAME"
+            $PB -c "add PayloadContent:0:IPSec:AuthenticationMethod string SharedSecret" "$MNAME"
+            $PB -c "add PayloadContent:0:VPNType string L2TP" "$MNAME"
+            $PB -c "add PayloadContent:0:PayloadIdentifier string $ORGNAME-vpn.l2tp-$VPNHOST" "$MNAME"
+            $PB -c "add PayloadContent:0:PayloadVersion integer 1" "$MNAME"
+            $PB -c "add PayloadContent:0:UserDefinedName string VPN ($VPNHOST)" "$MNAME"
+            $PB -c "add PayloadContent:0:PayloadType string com.apple.vpn.managed" "$MNAME"
+            $PB -c "add PayloadContent:0:PayloadUUID string $UUID2" "$MNAME"
+            $PB -c "add PayloadContent:0:PPP dict" "$MNAME"
+            $PB -c "add PayloadContent:0:PPP:CommRemoteAddress string $VPNHOST" "$MNAME"
+
+#           $PB -c "add PayloadRemovalDisallowed bool false" "$MNAME"
+#           $PB -c "add PayloadScope string System" "$MNAME"
+#           $PB -c "add PayloadContent:0:PPP:AuthName string '[Enter your account]'" "$MNAME"
+#           $PB -c "add PayloadContent:0:PayloadEnabled bool true" "$MNAME"
+#           $PB -c "add PayloadContent:0:IPSec:OnDemandEnabled integer 0" "$MNAME"
+#           $PB -c "add PayloadContent:0:PPP:OnDemandEnabled integer 0" "$MNAME"
+#           $PB -c "add PayloadContent:0:Proxies dict" "$MNAME"
+#           $PB -c "add PayloadContent:0:IPSec:PromptForVPNPIN bool false" "$MNAME"
+
+            # Post check
+            /usr/bin/plutil -convert binary1 "$MNAME" > "/tmp/`basename ${MNAME}`.err" 2>&1
+            CODE=$?
+            if [ $CODE -ne 0 ]; then
+                echo "Failed!: ${MNAME}"
+                cat "/tmp/`basename ${MNAME}`.err"
+            else
+                echo "Success!: ${MNAME}"
+            fi
+            exit $CODE
+            ;;
+        *)
+            show_help
+            exit 0
+            ;;
+    esac
+done

@@ -1,0 +1,122 @@
+#!/bin/bash
+
+iam=`basename "$0"`
+PNAME="/Library/Preferences/SystemConfiguration/com.apple.RemoteAccessServers.plist"
+
+function _readlink(){
+    c="$1"
+    f=`basename "$c"`
+    if [ "`type -a "$c" 2> /dev/null| head -1`"x = x ]; then
+        d=`cd $(dirname "$c"); pwd`
+    else
+        p=`type -a "$c" | head -1 | awk '{$1="";$2=""; print $0}'| sed 's/^[ \t]*//'`
+        d=`dirname "$p"`
+    fi
+    if [ -L "${d}/${f}" ]; then
+        cd "${d}"
+        r="`readlink -n \"${d}/${f}\"`"
+        _readlink "$r"
+    else
+        echo "${d}/${f}"
+    fi
+}
+
+function show_help(){
+    cat <<_HELP
+
+Usage::
+    $iam -d "n.n.n.n, n.n.n.m, ...." : Set DNS server address for vpn client.
+    $iam -D "your.domain, other.domain, ..." : Set search domain name.
+    $iam -s : Show DNS server address for vpn client.
+    $iam -h : Show this message.
+
+_HELP
+}
+
+fullpath_to_me=`_readlink "$0"`
+pathtome="`dirname \"$fullpath_to_me\"`"
+
+if [ ! -f "$PNAME" ]; then
+    echo "Not found: $PNAME"
+    echo "This host is not configured yet."
+    show_help
+    exit 1
+fi
+
+if [ $# = 0 ]; then
+    show_help
+    exit 1
+fi
+
+while getopts D:d:hs sw
+do
+    case $sw in
+        D )
+            if [ `whoami` != root ]; then
+                echo "You need administrator access to run this tool..."
+                echo ""
+                show_help
+                exit 1
+            fi
+            tmpfile=/tmp/`uuidgen`
+            SEARCHDOMAINS=${OPTARG}
+            for s in `echo "$SEARCHDOMAINS" | tr ',' ' '`
+            do
+                echo $s
+            done | sort | uniq >> $tmpfile
+            /usr/libexec/PlistBuddy  -c "delete  Servers:com.apple.ppp.l2tp:DNS:OfferedSearchDomains" "$PNAME"
+            /usr/libexec/PlistBuddy  -c "add  Servers:com.apple.ppp.l2tp:DNS:OfferedSearchDomains array" "$PNAME"
+            N=0
+            for dom in `cat $tmpfile`
+            do
+                /usr/libexec/PlistBuddy -c \
+                "add Servers:com.apple.ppp.l2tp:DNS:OfferedSearchDomains:${N} string $dom" "$PNAME"
+                N=`expr $N + 1`
+            done
+            rm $tmpfile
+            ;;
+        d )
+            if [ `whoami` != root ]; then
+                echo "You need administrator access to run this tool..."
+                echo ""
+                show_help
+                exit 1
+            fi
+            tmpfile=/tmp/`uuidgen`
+            DNSSERVERS=${OPTARG}
+            for a in `echo "$DNSSERVERS" | tr ',' ' '`
+            do
+                rtn=`${pathtome}/ipcalc -c $a`
+                if [ ${rtn:-x} != 'not_valid' ]; then
+                   echo "$a"
+                fi
+            done | sort | uniq >> $tmpfile
+            if [ `cat $tmpfile | wc -l` -eq 0 ]; then
+                echo "No valid ip address."
+                exit 1
+            fi
+            /usr/libexec/PlistBuddy  -c "delete  Servers:com.apple.ppp.l2tp:DNS:OfferedServerAddresses" "$PNAME"
+            /usr/libexec/PlistBuddy  -c "add  Servers:com.apple.ppp.l2tp:DNS:OfferedServerAddresses array" "$PNAME"
+            N=0
+            for addr in `cat $tmpfile`
+            do
+              /usr/libexec/PlistBuddy -c \
+                "add Servers:com.apple.ppp.l2tp:DNS:OfferedServerAddresses:${N} string $addr" "$PNAME"
+                N=`expr $N + 1`
+            done
+            rm $tmpfile
+            ;;
+        s )
+            /usr/libexec/PlistBuddy -c \
+                "print Servers:com.apple.ppp.l2tp:DNS:OfferedServerAddresses" "$PNAME" | \
+                grep -v -e '{' -e '}' | awk '{ print "nameserver "$1}'
+            /usr/libexec/PlistBuddy -c \
+                "print Servers:com.apple.ppp.l2tp:DNS:OfferedSearchDomains" "$PNAME" | \
+                grep -v -e '{' -e '}' | awk '{ print "search "$1}'
+            ;;
+        *)
+            show_help
+            exit 0
+            ;;
+    esac
+done

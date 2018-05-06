@@ -1,0 +1,50 @@
+#!/bin/bash
+
+iam=`basename "$0"`
+PNAME="/Library/Preferences/SystemConfiguration/com.apple.RemoteAccessServers.plist"
+
+function show_help(){
+    cat <<_HELP
+
+Usage::
+    $iam -n <hostname>: Hostname for VPN service
+    $iam -s : Show VPN hostname.
+    $iam -h : Show this message.
+
+_HELP
+}
+
+if [ ! -f "$PNAME" ]; then
+    echo "Not found: $PNAME"
+    echo "This host is not configured yet."
+    show_help
+    exit 1
+fi
+
+if [ $# = 0 ]; then
+    show_help
+    exit 1
+fi
+
+while getopts hn:s sw
+do
+    case $sw in
+        n )
+            if [ `whoami` != root ]; then
+                echo "You need administrator access to run this tool..."
+                show_help
+                exit 1
+            fi
+
+            VPNHOST="${OPTARG}"
+            /usr/libexec/PlistBuddy -c "delete VPNHost" "$PNAME" 2> /dev/null
+            /usr/libexec/PlistBuddy -c "add VPNHost string $VPNHOST" "$PNAME"
+            ;;
+        s )
+            /usr/libexec/PlistBuddy -c "print VPNHost" "$PNAME"
+            ;;
+        * )
+            show_help
+            ;;
+    esac
+done

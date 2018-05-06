@@ -1,0 +1,124 @@
+#!/bin/bash
+
+iam=`basename "$0"`
+opt='-U'
+KEYCHAIN='/Library/Keychains/System.keychain'
+SNAME='com.apple.net.racoon'
+PNAME="/Library/Preferences/SystemConfiguration/com.apple.RemoteAccessServers.plist"
+
+function show_help(){
+    cat <<_HELP
+
+Usage::
+    $iam -c <preshared_key>: Replace preshared key with new one.
+    $iam -C: Replace preshared key with new one which will created automatically.
+    $iam -d: Delete preshared key.
+    $iam -h: Show this message.
+    $iam -s: Show preshared key for VPN service.
+
+Known bugs::
+    - If you create preshared key by kind of command like this script, replace preshared key with new one will be failed.
+
+_HELP
+}
+
+function check(){
+    isFile=yes
+    if [ -f "${PNAME}" ]; then
+        ENCRYPT=`PlistBuddy -c "print  Servers:com.apple.ppp.l2tp:IPSec:SharedSecretEncryption" "${PNAME}"`
+        PSK_ACCOUNT=`/usr/libexec/PlistBuddy -c "print Servers:com.apple.ppp.l2tp:IPSec:SharedSecret" "${PNAME}"`
+    else
+        isFile=no
+    fi
+}
+
+if [ $# = 0 ]; then 
+    show_help
+    exit 1
+fi
+
+if [ `whoami` != root ]; then
+    echo "You need administrator access to run this tool..."
+    echo ""
+    show_help
+    exit 1
+fi
+
+while getopts Cc:dhs sw
+do
+    case $sw in
+        c|C)
+            NEW_PSK="${OPTARG}"
+            check
+            if [ $isFile = yes ]; then
+                if [ "${PSK_ACCOUNT}X" = X ]; then
+                    echo "Failed to get Preshared Key" >&2
+                    exit 1
+                fi
+                if [ "${ENCRYPT}X" = X ]; then
+                    echo "Unknown Shared Secret Encryption" >&2
+                    exit 1
+                fi
+                if [ "${NEW_PSK}X" = X ]; then
+                    NEW_PSK=`openssl rand -base64 32 | fold -w 32 | head -1`
+                fi
+                CURRENT_PSK=`security find-generic-password -w -a $PSK_ACCOUNT "$KEYCHAIN" 2> /dev/null`
+                if [ "${CURRENT_PSK}"X = X ]; then
+                    opt='-A'
+                else
+                    opt='-U -A'
+                fi
+                security add-generic-password $opt -s $SNAME -a $PSK_ACCOUNT -w "$NEW_PSK" "$KEYCHAIN"
+                rtn=$?
+                if [ $rtn -ne 0 ]; then
+                    echo "Failed to update preshared key."
+                    echo "Try to update password of '$SNAME' with Keychain Access.app."
+                    exit $rtn
+                fi
+            else
+                echo "Not found ${PNAME}" >&2
+                echo "VPN services is not configured yet" >&2
+                exit 1
+            fi
+            ;;
+        d)
+            check
+            if [ $isFile = yes ]; then
+                if [ "${PSK_ACCOUNT}X" = X ]; then
+                    echo "Failed to get Preshared Key" >&2
+                    exit 1
+                fi
+                if [ "${ENCRYPT}X" = X ]; then
+                    echo "Unknown Shared Secret Encryption" >&2
+                    exit 1
+                fi
+                CURRENT_PSK=`security find-generic-password -w -a $PSK_ACCOUNT "$KEYCHAIN"`
+                if [ "${CURRENT_PSK}"X != X ]; then
+                    security delete-generic-password -s $SNAME  -a $PSK_ACCOUNT "$KEYCHAIN" > /dev/null 2>&1
+                fi
+            fi
+            ;;
+        s)
+            check
+            if [ $isFile = yes ]; then
+                if [ "${PSK_ACCOUNT}X" = X ]; then
+                    echo "Failed to get Preshared Key" >&2
+                    exit 1
+                fi
+                if [ "${ENCRYPT}X" != "KeychainX" ]; then
+                    echo "Unknown Shared Secret Encryption" >&2
+                    exit 1
+                fi
+                security find-generic-password -w -a $PSK_ACCOUNT "$KEYCHAIN"
+            else
+                echo "Not found ${PNAME}" >&2
+                echo "VPN services is not configured yet" >&2
+                exit 1
+            fi
+            ;;
+        *)
+            show_help
+            exit 0
+            ;;
+    esac
+done
