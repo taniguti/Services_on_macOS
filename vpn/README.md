@@ -1,4 +1,4 @@
-# VPN
+# VPN help scripts
 
 vpndc is a command for VPN service of macOS.
 It helps migrate from macOS server to macOS.
