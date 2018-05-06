@@ -1,11 +1,11 @@
 # VPN
 
-vpndc is commandlet for VPN service of macOS.
+vpndc is a command for VPN service of macOS.
 It helps migrate from macOS server to macOS.
 Additionally it sets VPN service on standard macOS.
 
 # Install
-Clone and create symlink to vpndc.
+Clone where you like and create symlink to vpndc in your command search path, like `/usr/local/sbin`.
 ```
 cd /usr/local/share
 sudo git clone https://github.com/taniguti/Services_on_macOS.git
@@ -42,3 +42,7 @@ Usage::
     migrate -m [-f] : Migrate from macOS Server's VPN service. '-f' will as same as '-i -f'.
     migrate -h : Show this message.
 ```
+
+# VPN user's password
+VPN user which is on server local must have its password compatible wiht Windows File Shareing. Following figure shows vpnuser01 is available VPN service but Local Administrator not.
+![password_store_type](https://github.com/taniguti/Services_on_macOS/wiki/images/password_store_type_en.png)
