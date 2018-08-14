@@ -1,0 +1,17 @@
+#!/bin/bash
+
+mode=$1
+case ${mode:=stream} in
+    stream)
+        : mode=stream
+        ;;
+    show)
+        : mode=show
+        ;;
+    *)
+        echo "$0 show|stream"
+        exit 0
+        ;;
+esac
+
+sudo log $mode --predicate  '(process == "smtpd") || (process == "smtp")' --info 
