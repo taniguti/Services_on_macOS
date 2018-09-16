@@ -18,3 +18,19 @@ function _readlink(){
     fi
 }
 
+fullpath_to_me=`_readlink "$0"`
+pathtome=$(dirname "$fullpath_to_me")
+CONF="/usr/local/etc/dovecot/dovecot.conf"
+launchdplist="${pathtome}/../LaunchDaemons/org.dovecot.dovecotd.plist"
+
+: Check dovecot is installed.
+
+: Prepare Configuration
+if [ -f "${CONF}" ]; then
+    backupdate=$(date +%Y%m%d-%H%M%S)
+    mv "${CONF}" "${CONF}.backup.at.$backupdate"
+fi
+
+: Check master.cf of postfix
+
+: Prepare launchd.plist
