@@ -4,30 +4,24 @@
 <dict>
 	<key>Disabled</key>
 	<true/>
-	<key>HardResourceLimits</key>
-	<dict>
-		<key>NumberOfFiles</key>
-		<integer>8192</integer>
-	</dict>
 	<key>Label</key>
-	<string>org.dovecot.dovecotd</string>
-	<key>OnDemand</key>
-	<false/>
+	<string>org.dovecot.fts.update</string>
 	<key>PreventsSleep</key>
 	<true/>
 	<key>ProcessType</key>
-	<string>Interactive</string>
+	<string>Background</string>
+	<key>Program</key>
+	<string>/usr/local/libexec/dovecot/update-fts-index.pl</string>
 	<key>ProgramArguments</key>
 	<array>
-		<string>/usr/local/libexec/dovecot/mail_preflight</string>
-		<string>/usr/local/sbin/dovecot</string>
-		<string>-F</string>
+		<string>/usr/local/libexec/dovecot/update-fts-index.pl</string>
+		<string>--syslog</string>
+		<string>--queued</string>
 	</array>
-	<key>SoftResourceLimits</key>
-	<dict>
-		<key>NumberOfFiles</key>
-		<integer>8192</integer>
-	</dict>
+	<key>QueueDirectories</key>
+	<array>
+		<string>/var/db/dovecot.fts.update</string>
+	</array>
 	<key>StandardErrorPath</key>
 	<string>/var/log/dovecot/mail-err.log</string>
 	<key>StandardOutPath</key>
