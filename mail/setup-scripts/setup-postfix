@@ -1,4 +1,12 @@
 #!/bin/bash
+#-
+#- Set up postfix on macOS
+#- Usage:
+#-     sudo setup-postfix
+#-
+#-
+#-
+
 
 function _readlink(){
     c="$1"
@@ -20,12 +28,12 @@ function _readlink(){
 
 fullpath_to_me=`_readlink "$0"`
 pathtome=$(dirname "$fullpath_to_me")
-
 launchdplist="${pathtome}/../LaunchDaemons/org.postfix.master.plist"
 queuedir=$(/usr/libexec/PlistBuddy -c "print QueueDirectories:0" "$launchdplist")
 confdir=$(/usr/libexec/PlistBuddy -c "print ProgramArguments:2" "$launchdplist")
 spooldir=$(dirname $queuedir)
 
+: Prepare and convert config files
 mkdir -p "$confdir"
 if [ -d /Library/Server/Mail/Config/postfix ]; then
     cp -an /Library/Server/Mail/Config/postfix/* "$confdir" > /dev/null
@@ -33,6 +41,25 @@ else
     cp -an /etc/postfix/* "$confdir" > /dev/null
 fi
 
+postconf -c "$confdir" -e "alias_database = hash:${confdir}/aliases"
+postconf -c "$confdir" -e "alias_maps = hash:${confdir}/aliases"
+postconf -c "$confdir" -e "config_directory = ${confdir}"
+postconf -c "$confdir" -e "daemon_directory = /usr/libexec/postfix"
+postconf -c "$confdir" -e "header_checks = pcre:${confdir}/custom_header_checks"
+postconf -c "$confdir" -e "html_directory = /usr/share/doc/postfix"
+postconf -c "$confdir" -e "imap_submit_cred_file = ${confdir}/submit.cred"
+postconf -c "$confdir" -e "mailq_path = /usr/bin/mailq"
+postconf -c "$confdir" -e "manpage_directory = /usr/share/man"
+postconf -c "$confdir" -e "newaliases_path = /usr/bin/newaliases"
+postconf -c "$confdir" -e "queue_directory = $spooldir"
+postconf -c "$confdir" -e "readme_directory = /usr/share/doc/postfix"
+postconf -c "$confdir" -e "recipient_canonical_maps = hash:${confdir}/system_user_maps"
+postconf -c "$confdir" -e "sample_directory = /usr/share/doc/postfix/examples"
+postconf -c "$confdir" -e "sendmail_path = /usr/sbin/sendmail"
+postconf -c "$confdir" -e "virtual_alias_domains = hash:${confdir}/virtual_domains"
+postconf -c "$confdir" -e "virtual_alias_maps = hash:${confdir}/virtual_users"
+
+: Prepare spool directories
 mkdir -p "$spooldir"
 for d in active bounce corrupt defer deferred flush hold incoming maildrop pid private public saved trace
 do
@@ -46,11 +73,13 @@ chmod 730 "${spooldir}/maildrop"
 chmod 710 "${spooldir}/public"
 chmod 755 "${spooldir}/pid"
 
-exit 0
-
+: Prepare Launchd.plist
 if [ -f /Library/LaunchDaemons/org.postfix.master.plist ]; then
+    backupdate=$(date +%Y%m%d-%H%M%S)
     mv /Library/LaunchDaemons/org.postfix.master.plist \
-        /Library/LaunchDaemons/org.postfix.master.plist.$$.previous 
+        /Library/LaunchDaemons/org.postfix.master.plist.backup.at.$backupdate
 fi
 
-cp "${lauchdplist}" /Library/LaunchDaemons/org.postfix.master.plist
+cp "${launchdplist}" /Library/LaunchDaemons/org.postfix.master.plist
+chown 0:0 /Library/LaunchDaemons/org.postfix.master.plist
+chmod 644 /Library/LaunchDaemons/org.postfix.master.plist
