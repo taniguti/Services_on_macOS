@@ -22,7 +22,11 @@ fullpath_to_me=`_readlink "$0"`
 pathtome=$(dirname "$fullpath_to_me")
 CONF="/usr/local/etc/dovecot/dovecot.conf"
 launchdplist="${pathtome}/../LaunchDaemons/org.dovecot.dovecotd.plist"
-
+default_internal_group=_dovecot
+default_internal_user=_dovecot
+default_login_user=_dovenull
+# _dovecot g- mail
+# _dovenull g- _dovenull
 : Check dovecot is installed.
 
 : Prepare Configuration
