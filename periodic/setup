@@ -1,14 +1,19 @@
-#!/bin/bash -x
+#!/bin/bash
 
-if [ `whoami` != "root" ]; then
+if [ "$( whoami )" != "root" ]; then
     echo "Type sudo $0"
     exit 1
 fi
 
-cd $(dirname $0)
+cd "$( dirname "$0" )" || exit 1
 for f in daily/*
 do
-    ln -sf "$PWD/$f" /etc/periodic/$f
+    ln -sf "$PWD/$f" "/etc/periodic/$f"
+done
+
+for f in weekly/*
+do
+    ln -sf "$PWD/$f" "/etc/periodic/$f"
 done
 
 cat <<__CONF >> /etc/periodic.conf.local
@@ -17,4 +22,5 @@ cat <<__CONF >> /etc/periodic.conf.local
 daily_timemachine_clients_state="YES"
 daily_my_timemachine_state="YES"
 daily_state_APNS="NO"
+certbot_renew="YES"
 __CONF
