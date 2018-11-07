@@ -4,13 +4,13 @@ function _readlink(){
     c="$1"
     f=$( basename "$c" )
     if [ "$( type -a "$c" 2> /dev/null | head -1 )x" = x ]; then
-        d="$( cd "$(dirname "$c")"; pwd )"
+        d="$( cd "$(dirname "$c")" || exit 1 ; pwd )"
     else
         p="$( type -a "$c" | head -1 | awk '{$1="";$2=""; print $0}' | sed 's/^[ \t]*//' )"
         d="$( dirname "$p" )"
     fi
     if [ -L "${d}/${f}" ]; then
-        cd "${d}"
+        cd "${d}" || exit 1
         r="$( readlink -n "${d}/${f}" )"
         _readlink "$r"
     else
@@ -27,7 +27,12 @@ default_internal_user=_dovecot
 default_login_user=_dovenull
 # _dovecot g- mail
 # _dovenull g- _dovenull
-: Check dovecot is installed.
+
+: Check if dovecot is installed.
+if [ ! -e /usr/local/sbin/dovecot ]; then
+    echo "Install dovecot with homebrew."
+    exit 1
+fi
 
 : Prepare Configuration
 if [ -f "${CONF}" ]; then
@@ -38,3 +43,22 @@ fi
 : Check master.cf of postfix
 
 : Prepare launchd.plist
+
+
+#       /usr/local/etc/dovecot/dovecot.conf
+#              Dovecot's main configuration file.
+#
+#       /usr/local/etc/dovecot/dovecot-ldap.conf.ext
+#              Dovecot's LDAP authdb/userdb module configuration file.
+#
+#       /usr/local/etc/dovecot/dovecot-sql.conf.ext
+#              Dovecot's SQL authdb/userdb module configuration file.
+#
+#       /usr/local/etc/dovecot/dovecot-dict-sql.conf.ext
+#              Dovecot's dict configuration with SQL-backend.
+#
+#       /usr/local/etc/dovecot/conf.d/auth-*-conf.ext
+#              Configuration files of different authentication modules.
+#
+#       /usr/local/etc/dovecot/conf.d/*.conf
+#              Configuration files of different services and settings.
