@@ -42,7 +42,7 @@ do
 done
 
 : Start daemon
-ln -fs /usr/local/var/log/dovecot /var/log/dovecot
+ln -fhs /usr/local/var/log/dovecot /var/log/dovecot
 # brew services start dovecot
 
 #       /usr/local/etc/dovecot/dovecot.conf
