@@ -23,10 +23,10 @@ pathtome=$( dirname "$fullpath_to_me" )
 PREVIOUSCONFDIR="/Library/Server/Mail/Config/dovecot"
 CONFDIR="/usr/local/etc/dovecot"
 CONF="${CONFDIR}/dovecot.conf"
-launchdplist="${pathtome}/../LaunchDaemons/org.dovecot.dovecotd.plist"
 default_internal_group=_dovecot
 default_internal_user=_dovecot
 default_login_user=_dovenull
+backupdate="$( date +%Y%m%d-%H%M%S )"
 # _dovecot g- mail
 # _dovenull g- _dovenull
 
@@ -43,21 +43,19 @@ if [ "$( brew list -1 | grep dovecot )" -ne 1 ]; then
 fi
 
 if [ -d "$PREVIOUSCONFDIR" ]; then
-
-
+    mv "${CONFDIR}" "${CONFDIR}.backup.at.$backupdate"
+    mkdir -p "${CONFDIR}"
+    cp -a "${PREVIOUSCONFDIR}/*" "${CONFDIR}"
 fi
 
+for f in "${CONFDIR}"/conf.d/*
+do
+    sed -i -e "s#${PREVIOUSCONFDIR}#$CONFDIR#g" "$f"
+done
 
-: Prepare Configuration
-if [ -f "${CONF}" ]; then
-    backupdate="$( date +%Y%m%d-%H%M%S )"
-    mv "${CONF}" "${CONF}.backup.at.$backupdate"
-fi
-
-: Check master.cf of postfix
-
-: Prepare launchd.plist
-
+: Start daemon
+ln -fs /usr/local/var/log/dovecot /var/log/dovecot
+# brew services start dovecot
 
 #       /usr/local/etc/dovecot/dovecot.conf
 #              Dovecot's main configuration file.
