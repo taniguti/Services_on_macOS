@@ -191,12 +191,12 @@ scache    unix  -       -       n       -       1       scache
 #
 # ====================================================================
 #
-# Dovecot
+# Dovecot (Installed by Homebrew)
 #
 dovecot   unix  -       n       n       -       25      pipe
-  flags=DRhu user=_dovecot:mail argv=/usr/local/libexec/dovecot/dovecot-lda -d \${user}
+  flags=DRhu user=_dovecot:mail argv=/usr/local/opt/dovecot/libexec/dovecot/dovecot-lda -d \${user}
 # Use these settings to enable +addressing (user+mailbox@example.com)
-# flags=DRhu user=_dovecot:mail argv=/usr/local/libexec/dovecot/dovecot-lda -d \${user} -a \${recipient} -m \${extension}
+# flags=DRhu user=_dovecot:mail argv=/usr/local/opt/dovecot/libexec/dovecot/dovecot-lda -d \${user} -a \${recipient} -m \${extension}
 #
 # ====================================================================
 #
