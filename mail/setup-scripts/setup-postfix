@@ -46,11 +46,12 @@ postconf -c "$confdir" -e "alias_database = hash:${confdir}/aliases"
 postconf -c "$confdir" -e "alias_maps = hash:${confdir}/aliases"
 postconf -c "$confdir" -e "command_directory = /usr/sbin"
 postconf -c "$confdir" -e "config_directory = ${confdir}"
-postconf -c "$confdir" -e "content_filter = ''"
+postconf -c "$confdir" -e "content_filter = "
 postconf -c "$confdir" -e "daemon_directory = /usr/libexec/postfix"
 postconf -c "$confdir" -e "header_checks = pcre:${confdir}/custom_header_checks"
-postconf -c "$confdir" -e "html_directory = /usr/share/doc/postfix"
+postconf -c "$confdir" -e "html_directory = /usr/share/doc/postfix/html"
 postconf -c "$confdir" -e "imap_submit_cred_file = ${confdir}/submit.cred"
+postconf -c "$confdir" -e "inet_interfaces = all"
 postconf -c "$confdir" -e "mailq_path = /usr/bin/mailq"
 postconf -c "$confdir" -e "manpage_directory = /usr/share/man"
 postconf -c "$confdir" -e "newaliases_path = /usr/bin/newaliases"
@@ -75,8 +76,7 @@ else
 fi
 
 : master.cf
-cp "$confdir/master.cf" "$confdir/master.cf.$backupdate"
-cat << _MASTER > "$confdir/master.cf"
+cat << _MASTER > "/tmp/master.cf.$$"
 #
 # Postfix master process configuration file.  For details on the format
 # of the file, see the master(5) manual page (command: "man 5 master").
@@ -96,8 +96,9 @@ smtpd     pass  -       -       n       -       -       smtpd
 dnsblog   unix  -       -       n       -       0       dnsblog
 tlsproxy  unix  -       -       n       -       0       tlsproxy
 smtp      unix  -       -       n       -       -       smtp
-submission inet  n       -       n       -       -       smtpd
+submission inet n       -       n       -       -       smtpd
   -o smtpd_tls_security_level=encrypt
+smtp      unix  -       -       n       -       -       smtp
 # === End auto-generated section ===========================================
 proxywrite unix -       -       n       -       1       proxymap
 # Modern SMTP clients communicate securely over port 25 using the STARTTLS command.
@@ -258,6 +259,14 @@ ${CMT}  user=nobody:mail argv=/usr/bin/perl /usr/local/libexec/postfix/greylist.
 #   -o local_recipient_maps=
 #   -o relay_recipient_maps=
 _MASTER
+md5new="$( md5 -qr "/tmp/master.cf.$$" )"
+md5cur="$( md5 -qr "$confdir/master.cf" )"
+if [ "$md5cur" = "$md5new" ]; then
+    rm -f "/tmp/master.cf.$$"
+else
+    cp "$confdir/master.cf" "$confdir/master.cf.$backupdate"
+    cp "/tmp/master.cf.$$" "$confdir/master.cf"
+fi
 chmod 644 "$confdir/master.cf"
 chown root:wheel "$confdir/master.cf"
 
