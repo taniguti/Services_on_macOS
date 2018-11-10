@@ -20,7 +20,9 @@ function _readlink(){
 
 fullpath_to_me=$( _readlink "$0" )
 pathtome=$( dirname "$fullpath_to_me" )
-CONF="/usr/local/etc/dovecot/dovecot.conf"
+PREVIOUSCONFDIR="/Library/Server/Mail/Config/dovecot"
+CONFDIR="/usr/local/etc/dovecot"
+CONF="${CONFDIR}/dovecot.conf"
 launchdplist="${pathtome}/../LaunchDaemons/org.dovecot.dovecotd.plist"
 default_internal_group=_dovecot
 default_internal_user=_dovecot
@@ -29,10 +31,22 @@ default_login_user=_dovenull
 # _dovenull g- _dovenull
 
 : Check if dovecot is installed.
-if [ ! -e /usr/local/sbin/dovecot ]; then
-    echo "Install dovecot with homebrew."
+if [ ! -x /usr/local/bin/brew ]; then
+    echo "setup Homebrew."
     exit 1
 fi
+
+if [ "$( brew list -1 | grep dovecot )" -ne 1 ]; then
+    echo "Install deovecot with Homebrew."
+    echo "Type brew install dovecot"
+    exit 1
+fi
+
+if [ -d "$PREVIOUSCONFDIR" ]; then
+
+
+fi
+
 
 : Prepare Configuration
 if [ -f "${CONF}" ]; then
