@@ -30,22 +30,10 @@ backupdate="$( date +%Y%m%d-%H%M%S )"
 # _dovecot g- mail
 # _dovenull g- _dovenull
 
-: Check if dovecot is installed.
-if [ ! -x /usr/local/bin/brew ]; then
-    echo "setup Homebrew."
-    exit 1
-fi
-
-if [ "$( brew list -1 | grep dovecot )" -ne 1 ]; then
-    echo "Install deovecot with Homebrew."
-    echo "Type brew install dovecot"
-    exit 1
-fi
-
 if [ -d "$PREVIOUSCONFDIR" ]; then
     mv "${CONFDIR}" "${CONFDIR}.backup.at.$backupdate"
     mkdir -p "${CONFDIR}"
-    cp -a "${PREVIOUSCONFDIR}/*" "${CONFDIR}"
+    cp -a "${PREVIOUSCONFDIR}"/* "${CONFDIR}"/
 fi
 
 for f in "${CONFDIR}"/conf.d/*
