@@ -30,6 +30,7 @@ backupdate="$( date +%Y%m%d-%H%M%S )"
 # _dovecot g- mail
 # _dovenull g- _dovenull
 
+OWNERID="$( stat -f "%u:%g" "$CONFDIR" )"
 if [ -d "$PREVIOUSCONFDIR" ]; then
     mv "${CONFDIR}" "${CONFDIR}.backup.at.$backupdate"
     mkdir -p "${CONFDIR}"
@@ -39,10 +40,13 @@ fi
 for f in "${CONFDIR}"/conf.d/*
 do
     sed -i -e "s#${PREVIOUSCONFDIR}#$CONFDIR#g" "$f"
+    sed -i -e "s/^aps_topic/#aps_topic/g" "$f"
 done
 
-: Start daemon
+chown -R "$OWNERID" "${CONFDIR}"
 ln -fhs /usr/local/var/log/dovecot /var/log/dovecot
+
+: Start daemon
 # brew services start dovecot
 
 #       /usr/local/etc/dovecot/dovecot.conf
