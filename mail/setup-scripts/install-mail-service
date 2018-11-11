@@ -22,10 +22,15 @@ fullpath_to_me="$( _readlink "$0" )"
 pathtome="$( dirname "$fullpath_to_me" )"
 if [ "$( whoami )" != root ]; then doAsRoot='sudo' ; fi
 
-
-
 # postfix
 $doAsRoot "${pathtome}/setup-postfix"
 
 # dovecot
+IsDovecot="$( brew info dovecot | grep "Not installed" )"
+if [ "$IsDovecot" = "Not installed" ]; then
+    cat <_MEG
+install with homebrew
+    brew install dovecot --with-pam --with-pigeonhole
+_MSG
+fi
 $doAsRoot "${pathtome}/setup-dovecot"
