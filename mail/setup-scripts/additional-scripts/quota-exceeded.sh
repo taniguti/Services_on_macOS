@@ -4,6 +4,10 @@ USER="$1"
 eval "$(/usr/local/bin/doveconf 2> /dev/null | grep postmaster_address  | tr -d "[:blank:]_")"
 msgfile="/tmp/$( uuidgen )"
 
+if [ -z "$postmasteraddress" ]; then
+    postmasteraddress="postmaster@$(hostname)"
+fi
+
 cat <<_TEXT > "$msgfile"
 From: Mail Administrator <$postmasteraddress>
 Subject: [Error] Email server usage has exceeded quota

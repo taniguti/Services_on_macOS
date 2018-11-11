@@ -22,15 +22,16 @@ fullpath_to_me=$( _readlink "$0" )
 pathtome=$( dirname "$fullpath_to_me" )
 PREVIOUSCONFDIR="/Library/Server/Mail/Config/dovecot"
 CONFDIR="/usr/local/etc/dovecot"
+LIBEXECDIR="/usr/local/libexec/dovecot"
 CONF="${CONFDIR}/dovecot.conf"
-default_internal_group=_dovecot
-default_internal_user=_dovecot
-default_login_user=_dovenull
+OWNERID="$( stat -f "%u:%g" "$CONFDIR" )"
 backupdate="$( date +%Y%m%d-%H%M%S )"
+#default_internal_group=_dovecot
+#default_internal_user=_dovecot
+#default_login_user=_dovenull
 # _dovecot g- mail
 # _dovenull g- _dovenull
 
-OWNERID="$( stat -f "%u:%g" "$CONFDIR" )"
 if [ -d "$PREVIOUSCONFDIR" ]; then
     mv "${CONFDIR}" "${CONFDIR}.backup.at.$backupdate"
     mkdir -p "${CONFDIR}"
@@ -40,11 +41,18 @@ fi
 for f in "${CONFDIR}"/conf.d/*
 do
     sed -i -e "s#${PREVIOUSCONFDIR}#$CONFDIR#g" "$f"
+    sed -i -e "s#/Applications/Server.app/Contents/ServerRoot/usr/libexec/dovecot#$LIBEXECDIR#g" "$f"
+    sed -i -e "s#/Library/Logs/Mail#/usr/local/var/log/dovecot#g" "$f"
 done
 sed -i -e "s/^aps_topic/#aps_topic/g" "$CONF"
-
+rm -f "${CONFDIR}/conf.d/*-e" "${CONF}-e"
 chown -R "$OWNERID" "${CONFDIR}"
 ln -fhs /usr/local/var/log/dovecot /var/log/dovecot
+
+: $LIBEXECDIR
+mkdir -p "$LIBEXECDIR"
+cp "${pathtome}/additional-scripts/quota-exceeded.sh" "$LIBEXECDIR"
+cp "${pathtome}/additional-scripts/quota-warning.sh" "$LIBEXECDIR"
 
 : Start daemon
 # brew services start dovecot
