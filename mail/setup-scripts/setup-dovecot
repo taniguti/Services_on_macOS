@@ -40,8 +40,8 @@ fi
 for f in "${CONFDIR}"/conf.d/*
 do
     sed -i -e "s#${PREVIOUSCONFDIR}#$CONFDIR#g" "$f"
-    sed -i -e "s/^aps_topic/#aps_topic/g" "$f"
 done
+sed -i -e "s/^aps_topic/#aps_topic/g" "$CONF"
 
 chown -R "$OWNERID" "${CONFDIR}"
 ln -fhs /usr/local/var/log/dovecot /var/log/dovecot
