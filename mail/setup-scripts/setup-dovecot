@@ -36,23 +36,26 @@ if [ -d "$PREVIOUSCONFDIR" ]; then
     mv "${CONFDIR}" "${CONFDIR}.backup.at.$backupdate"
     mkdir -p "${CONFDIR}"
     cp -a "${PREVIOUSCONFDIR}"/* "${CONFDIR}"/
+
+    for f in "${CONFDIR}"/conf.d/*
+    do
+        sed -i -e "s#${PREVIOUSCONFDIR}#$CONFDIR#g" "$f"
+        sed -i -e "s#/Applications/Server.app/Contents/ServerRoot/usr/libexec/dovecot#$LIBEXECDIR#g" "$f"
+        sed -i -e "s#/Library/Logs/Mail#/usr/local/var/log/dovecot#g" "$f"
+    done
+    sed -i -e "s/^aps_topic/#aps_topic/g" "$CONF"
+    rm -f "${CONFDIR}/conf.d/*-e" "${CONF}-e"
+
+    : $LIBEXECDIR
+    mkdir -p "$LIBEXECDIR"
+    cp "${pathtome}/additional-scripts/quota-exceeded.sh" "$LIBEXECDIR"
+    cp "${pathtome}/additional-scripts/quota-warning.sh" "$LIBEXECDIR"
+else
+    : TBD
 fi
 
-for f in "${CONFDIR}"/conf.d/*
-do
-    sed -i -e "s#${PREVIOUSCONFDIR}#$CONFDIR#g" "$f"
-    sed -i -e "s#/Applications/Server.app/Contents/ServerRoot/usr/libexec/dovecot#$LIBEXECDIR#g" "$f"
-    sed -i -e "s#/Library/Logs/Mail#/usr/local/var/log/dovecot#g" "$f"
-done
-sed -i -e "s/^aps_topic/#aps_topic/g" "$CONF"
-rm -f "${CONFDIR}/conf.d/*-e" "${CONF}-e"
 chown -R "$OWNERID" "${CONFDIR}"
 ln -fhs /usr/local/var/log/dovecot /var/log/dovecot
-
-: $LIBEXECDIR
-mkdir -p "$LIBEXECDIR"
-cp "${pathtome}/additional-scripts/quota-exceeded.sh" "$LIBEXECDIR"
-cp "${pathtome}/additional-scripts/quota-warning.sh" "$LIBEXECDIR"
 
 : Start daemon
 # brew services start dovecot
