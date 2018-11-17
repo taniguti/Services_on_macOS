@@ -136,9 +136,12 @@ else
 fi
 
 : master.cf
+# https://www.mind-it.info/2014/02/20/change-postfix-master-cf-postconf/
+# http://www.postfix.org/wip.html
+postconf -M -c "$confdir" dovecot/unix='dovecot unix - n n - 25 pipe flags=DRhu user=_dovecot:mail argv=/usr/local/opt/devecot/libexec/dovecot/dovecot-lda -d ${user}'
+
 if [ -x "/usr/local/libexec/postfix/greylist.pl" ]; then
-    postconf -M -c "$confdir" -e \
-    "policy/unix  = -       n       n       -       -       spawn user=nobody:mail argv=/usr/bin/perl /usr/local/libexec/postfix/greylist.pl"
+    postconf -M -c "$confdir" policy/unix="policy unix - n n - - spawn user=nobody:mail argv=/usr/bin/perl /usr/local/libexec/postfix/greylist.pl"
 else
     postconf -M# -c "$confdir" "policy/unix"
 fi
@@ -179,5 +182,5 @@ chown 0:0 /Library/LaunchDaemons/org.postfix.master.plist
 chmod 644 /Library/LaunchDaemons/org.postfix.master.plist
 
 echo "Done"
-postconf -c "$confdir" check
+postfix -c "$confdir" check
 exit $?
