@@ -69,6 +69,8 @@ else
         tlsca="/etc/letsencrypt/live/${mailservername}/fullchain.pem"
         tlskey="/etc/letsencrypt/live/${mailservername}/privkey.pem"
         tls_enabled=yes
+        chgrp certusers /etc/letsencrypt/{archive,live,keys}
+        chmod 750 /etc/letsencrypt/{archive,live,keys}
     fi
 fi
 

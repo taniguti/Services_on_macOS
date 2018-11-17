@@ -31,6 +31,31 @@ backupdate="$( date +%Y%m%d-%H%M%S )"
 #default_login_user=_dovenull
 # _dovecot g- mail
 # _dovenull g- _dovenull
+if [ -x "$mailservername" ]; then
+    mailservername="$( hostname )"
+fi
+if [ -f "$tlsca" ] && [ -f "$tlscert" ] && [ -f "$tlskey" ]; then
+   tls_enabled=yes
+else
+    if [ -f "/etc/letsencrypt/live/${mailservername}/cert.pem" ] && \
+       [ -f "/etc/letsencrypt/live/${mailservername}/fullchain.pem" ] && \
+       [ -f "/etc/letsencrypt/live/${mailservername}/privkey.pem" ] ; then
+        tlscert="/etc/letsencrypt/live/${mailservername}/cert.pem"
+        tlsca="/etc/letsencrypt/live/${mailservername}/fullchain.pem"
+        tlskey="/etc/letsencrypt/live/${mailservername}/privkey.pem"
+        tls_enabled=yes
+        chgrp certusers /etc/letsencrypt/{archive,live,keys}
+        chmod 750 /etc/letsencrypt/{archive,live,keys}
+    fi
+fi
+
+##--- TEST
+tls_enabled=yes
+tlsca=/usr/local/etc/certificates/Local-ROOTCA.pem
+tlscert=/usr/local/etc/certificates/pms01.vmnet3.com.pem
+tlskey=/usr/local/etc/certificates/pms01.vmnet3.com.np.key
+##--- TEST
+
 
 if [ -d "$PREVIOUSCONFDIR" ]; then
     mv "${CONFDIR}" "${CONFDIR}.backup.at.$backupdate"

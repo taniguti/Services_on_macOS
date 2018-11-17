@@ -22,6 +22,33 @@ fullpath_to_me="$( _readlink "$0" )"
 pathtome="$( dirname "$fullpath_to_me" )"
 if [ "$( whoami )" != root ]; then doAsRoot='sudo' ; fi
 
+# tls
+if [ -x "$mailservername" ]; then
+    mailservername="$( hostname )"
+fi
+if [ -f "$tlsca" ] && [ -f "$tlscert" ] && [ -f "$tlskey" ]; then
+   tls_enabled=yes
+else
+    if [ -f "/etc/letsencrypt/live/${mailservername}/cert.pem" ] && \
+       [ -f "/etc/letsencrypt/live/${mailservername}/fullchain.pem" ] && \
+       [ -f "/etc/letsencrypt/live/${mailservername}/privkey.pem" ] ; then
+        tlscert="/etc/letsencrypt/live/${mailservername}/cert.pem"
+        tlsca="/etc/letsencrypt/live/${mailservername}/fullchain.pem"
+        tlskey="/etc/letsencrypt/live/${mailservername}/privkey.pem"
+        tls_enabled=yes
+        chgrp certusers /etc/letsencrypt/{archive,live,keys}
+        chmod 750 /etc/letsencrypt/{archive,live,keys}
+    fi
+fi
+
+##--- TEST
+tls_enabled=yes
+tlsca=/usr/local/etc/certificates/Local-ROOTCA.pem
+tlscert=/usr/local/etc/certificates/pms01.vmnet3.com.pem
+tlskey=/usr/local/etc/certificates/pms01.vmnet3.com.np.key
+##--- TEST
+
+
 # postfix
 $doAsRoot "${pathtome}/setup-postfix"
 
