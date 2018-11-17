@@ -1,4 +1,12 @@
 #!/bin/bash
+#-
+#-
+#-
+#-
+#-
+#-
+#-
+#-
 
 function _readlink(){
     c="$1"
@@ -22,10 +30,33 @@ fullpath_to_me="$( _readlink "$0" )"
 pathtome="$( dirname "$fullpath_to_me" )"
 if [ "$( whoami )" != root ]; then doAsRoot='sudo' ; fi
 
-# tls
-if [ -x "$mailservername" ]; then
+while getopts C:H:K:P:h sw
+do
+    case "$sw" in
+        C )
+            tlsca="$OPTARG"
+            ;;
+        K )
+            tlskey="$OPTARG"
+            ;;
+        P )
+            tlscert="$OPTARG"
+            ;;
+        H )
+            mailservername="$OPTARG"
+            ;;
+        * )
+            grep ^#- "$0" | cut -c 4-
+            exit 0
+            ;;
+    esac
+done
+
+if [ -z "$mailservername" ]; then
     mailservername="$( hostname )"
 fi
+
+# tls
 if [ -f "$tlsca" ] && [ -f "$tlscert" ] && [ -f "$tlskey" ]; then
    tls_enabled=yes
 else
@@ -35,22 +66,15 @@ else
         tlscert="/etc/letsencrypt/live/${mailservername}/cert.pem"
         tlsca="/etc/letsencrypt/live/${mailservername}/fullchain.pem"
         tlskey="/etc/letsencrypt/live/${mailservername}/privkey.pem"
-        tls_enabled=yes
+        echo "Found Let's Encrypt certificate. Use it."
         chgrp certusers /etc/letsencrypt/{archive,live,keys}
         chmod 750 /etc/letsencrypt/{archive,live,keys}
+        tls_enabled=yes
     fi
 fi
-
-##--- TEST
-tls_enabled=yes
-tlsca=/usr/local/etc/certificates/Local-ROOTCA.pem
-tlscert=/usr/local/etc/certificates/pms01.vmnet3.com.pem
-tlskey=/usr/local/etc/certificates/pms01.vmnet3.com.np.key
-##--- TEST
-
-
-# postfix
-$doAsRoot "${pathtome}/setup-postfix"
+if [ "${tls_enabled:-no}" = yes ]; then
+    tlsoptions="-C $tlsca -P $tlscert -K $tlskey"
+fi
 
 # dovecot
 IsDovecot="$( brew info dovecot | grep "Not installed" )"
@@ -61,4 +85,7 @@ install with homebrew
 _MSG
     exit 1
 fi
-$doAsRoot "${pathtome}/setup-dovecot"
+$doAsRoot eval "${pathtome}/setup-dovecot" -H "$mailservername" "$tlsoptions"
+
+# postfix
+$doAsRoot eval "${pathtome}/setup-postfix" -H "$mailservername" "$tlsoptions"

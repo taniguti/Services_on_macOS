@@ -5,7 +5,7 @@
 #-     Use with sudo.
 #-
 #-     setup-postfix [ -C /path/to/CA-chain.pem -P /path/to/server-cert.pem -K /path/to/cert-key.pem ]
-#-          [ -h <mail server fqdn ] [ -h ]
+#-          [ -H <mail server fqdn> ] [ -h ]
 #-
 
 function _readlink(){
@@ -56,22 +56,13 @@ confdir=$(/usr/libexec/PlistBuddy -c "print ProgramArguments:2" "$launchdplist")
 datadir="/Library/Server/Mail/Data/mta"
 spooldir="$( dirname "$queuedir" )"
 backupdate=$(date +%Y%m%d-%H%M%S)
-if [ -x "$mailservername" ]; then
+if [ -z "$mailservername" ]; then
     mailservername="$( hostname )"
 fi
 if [ -f "$tlsca" ] && [ -f "$tlscert" ] && [ -f "$tlskey" ]; then
    tls_enabled=yes
 else
-    if [ -f "/etc/letsencrypt/live/${mailservername}/cert.pem" ] && \
-       [ -f "/etc/letsencrypt/live/${mailservername}/fullchain.pem" ] && \
-       [ -f "/etc/letsencrypt/live/${mailservername}/privkey.pem" ] ; then
-        tlscert="/etc/letsencrypt/live/${mailservername}/cert.pem"
-        tlsca="/etc/letsencrypt/live/${mailservername}/fullchain.pem"
-        tlskey="/etc/letsencrypt/live/${mailservername}/privkey.pem"
-        tls_enabled=yes
-        chgrp certusers /etc/letsencrypt/{archive,live,keys}
-        chmod 750 /etc/letsencrypt/{archive,live,keys}
-    fi
+   tls_enabled=no
 fi
 
 ##--- TEST
@@ -91,6 +82,7 @@ else
 fi
 
 : main.cf
+postconf -c "$confdir" -e "myhostname = $mailservername"
 postconf -c "$confdir" -e "alias_database = hash:${confdir}/aliases"
 postconf -c "$confdir" -e "alias_maps = hash:${confdir}/aliases"
 postconf -c "$confdir" -e "command_directory = /usr/sbin"
@@ -119,7 +111,7 @@ postconf -# -c "$confdir" "smtpd_require_virtual_map"
 postconf -# -c "$confdir" "smtpd_use_pw_server"
 postconf -# -c "$confdir" "use_sacl_cache"
 
-if [ "${tls_enabled:-no}" = yes ]; then
+if [ "$tls_enabled" = yes ]; then
     postconf -c "$confdir" -e "smtp_tls_CAfile = $tlsca"
     postconf -c "$confdir" -e "smtp_tls_cert_file = $tlscert"
     postconf -c "$confdir" -e "smtp_tls_key_file = $tlskey"
@@ -149,19 +141,14 @@ postconf -M# -c "$confdir" "smtp-amavis/unix"
 postconf -M# -c "$confdir" "127.0.0.1:10025/inet"
 
 : Prepare spool directories
-mkdir -p "$spooldir"
-for d in active bounce corrupt defer deferred flush hold incoming maildrop pid private public saved trace
-do
-    mkdir -p "${spooldir}/$d"
-    chmod 700 "${spooldir}/$d"
-    chown _postfix:wheel "${spooldir}/$d"
-done
-chown _postfix:_postdrop "${spooldir}/maildrop"
-chown _postfix:_postdrop "${spooldir}/public"
-chown root:wheel "${spooldir}/pid"
+mkdir -p  "${spooldir}"/{active,bounce,corrupt,defer,deferred,flush,hold,incoming,maildrop,pid,private,public,saved,trace}
+chmod 700 "${spooldir}"/{active,bounce,corrupt,defer,deferred,flush,hold,incoming,private,saved,trace}
 chmod 730 "${spooldir}/maildrop"
-chmod 710 "${spooldir}/public"
 chmod 755 "${spooldir}/pid"
+chmod 710 "${spooldir}/public"
+chown _postfix:wheel "${spooldir}"/{active,bounce,corrupt,defer,deferred,flush,hold,incoming,private,saved,trace}
+chown _postfix:_postdrop "${spooldir}"/{maildrop,public}
+chown root:wheel "${spooldir}/pid"
 
 : fix owner
 if [ -f "${datadir}/guid_device_maps.plist" ]; then
@@ -171,8 +158,7 @@ fi
 : Prepare Launchd.plist
 if [ -f /Library/LaunchDaemons/org.postfix.master.plist ]; then
     if [ "$( md5 -q /Library/LaunchDaemons/org.postfix.master.plist )" != "$( md5 -q "$launchdplist" )" ]; then
-        mv /Library/LaunchDaemons/org.postfix.master.plist \
-            "/Library/LaunchDaemons/org.postfix.master.plist.backup.at.$backupdate"
+        mv /Library/LaunchDaemons/org.postfix.master.plist{,backup.at."$backupdate"}
         cp "$launchdplist" /Library/LaunchDaemons/org.postfix.master.plist
     fi
 else
@@ -181,6 +167,7 @@ fi
 chown 0:0 /Library/LaunchDaemons/org.postfix.master.plist
 chmod 644 /Library/LaunchDaemons/org.postfix.master.plist
 
-echo "Done"
-postfix -c "$confdir" check
-exit $?
+postfix -c "$confdir" check ; r=$?
+if [ "$r" -eq 0 ]; then configcheck=OK ;fi
+echo "postfix setup: done.[configcheck: ${configcheck:-NG}]"
+exit "$r"
