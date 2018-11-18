@@ -82,6 +82,7 @@ else
 fi
 
 : main.cf
+touch "${confdir}"/{white-list.txt,black-list.txt,reject-list.txt}
 postconf -c "$confdir" -e "myhostname = $mailservername"
 postconf -c "$confdir" -e "alias_database = hash:${confdir}/aliases"
 postconf -c "$confdir" -e "alias_maps = hash:${confdir}/aliases"
@@ -99,17 +100,21 @@ postconf -c "$confdir" -e "readme_directory = /usr/share/doc/postfix"
 postconf -c "$confdir" -e "recipient_canonical_maps = hash:${confdir}/system_user_maps"
 postconf -c "$confdir" -e "sample_directory = /usr/share/doc/postfix/examples"
 postconf -c "$confdir" -e "sendmail_path = /usr/sbin/sendmail"
+postconf -c "$confdir" -e "smtpd_sasl_auth_enable = yes"
+postconf -c "$confdir" -e "smtpd_sasl_local_domain = $mailservername"
+postconf -c "$confdir" -e "smtpd_recipient_restrictions = permit_sasl_authenticated permit_mynetworks reject_unauth_destination permit"
+postconf -c "$confdir" -e "smtpd_sender_restrictions = permit_mynetworks, check_client_access regexp:${confdir}/white-list.txt, check_client_access regexp:${confdir}/black-list.txt, check_client_access regexp:${confdir}/reject-list.txt"
 postconf -c "$confdir" -e "virtual_alias_domains = hash:${confdir}/virtual_domains"
 postconf -c "$confdir" -e "virtual_alias_maps = hash:${confdir}/virtual_users"
+postconf -# -c "$confdir" "smtpd_use_pw_server"
+postconf -# -c "$confdir" "enable_server_options"
+postconf -# -c "$confdir" "smtpd_pw_server_security_options"
+postconf -# -c "$confdir" "mydomain_fallback"
 postconf -# -c "$confdir" "config_directory"
 postconf -# -c "$confdir" "content_filter"
-postconf -# -c "$confdir" "enable_server_options"
 postconf -# -c "$confdir" "imap_submit_cred_file"
-postconf -# -c "$confdir" "mydomain_fallback"
 postconf -# -c "$confdir" "mailq_path"
-postconf -# -c "$confdir" "smtpd_pw_server_security_options"
 postconf -# -c "$confdir" "smtpd_require_virtual_map"
-postconf -# -c "$confdir" "smtpd_use_pw_server"
 postconf -# -c "$confdir" "use_sacl_cache"
 
 if [ "$tls_enabled" = yes ]; then
@@ -131,6 +136,8 @@ fi
 : master.cf
 # https://www.mind-it.info/2014/02/20/change-postfix-master-cf-postconf/
 # http://www.postfix.org/wip.html
+postconf -M -c "$confdir" pickup/fifo="pickup fifo n - n 60 1 pickup"
+postconf -P -c "$confdir" "pickup/fifo/content_filter="
 postconf -M -c "$confdir" dovecot/unix="dovecot unix - n n - 25 pipe flags=DRhu user=_dovecot:mail argv=/usr/local/opt/devecot/libexec/dovecot/dovecot-lda -d \${user}"
 
 if [ -x "/usr/local/libexec/postfix/greylist.pl" ]; then
