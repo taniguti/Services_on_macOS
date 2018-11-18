@@ -1,0 +1,6 @@
+#!/bin/bash
+
+mkdir /Library/WebServer/Documents/ExportedWikis
+chown _teamsserver /Library/WebServer/Documents/ExportedWikis
+wikiadmin export -all -format pages -path /Library/WebServer/Documents/ExportedWikis
+chown -R 501:_www /Library/WebServer/Documents/ExportedWikis
