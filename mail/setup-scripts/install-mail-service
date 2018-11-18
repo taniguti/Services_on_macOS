@@ -81,7 +81,7 @@ IsDovecot="$( brew info dovecot | grep "Not installed" )"
 if [ "$IsDovecot" = "Not installed" ]; then
     cat <_MEG
 install with homebrew
-    brew install dovecot --with-pigeonhole
+    brew install dovecot --with-pigeonhole --with-pam
 _MSG
     exit 1
 fi
