@@ -20,12 +20,13 @@ function _readlink(){
 
 fullpath_to_me=$( _readlink "$0" )
 pathtome=$( dirname "$fullpath_to_me" )
-PREVIOUSCONFDIR="/Library/Server/Mail/Config/dovecot"
 CONFDIR="/usr/local/etc/dovecot"
 LIBEXECDIR="/usr/local/libexec/dovecot"
 CONF="${CONFDIR}/dovecot.conf"
 OWNERID="$( stat -f "%u:%g" "$CONFDIR" )"
 backupdate="$( date +%Y%m%d-%H%M%S )"
+
+# PREVIOUSCONFDIR="/Library/Server/Mail/Config/dovecot"
 #default_internal_group=_dovecot
 #default_internal_user=_dovecot
 #default_login_user=_dovenull
@@ -45,49 +46,105 @@ tlscert=/usr/local/etc/certificates/pms01.vmnet3.com.pem
 tlskey=/usr/local/etc/certificates/pms01.vmnet3.com.np.key
 ##--- TEST
 
-if [ -d "$PREVIOUSCONFDIR" ]; then
-    mv "${CONFDIR}" "${CONFDIR}.backup.at.$backupdate"
-    mkdir -p "${CONFDIR}"
-    cp -a "${PREVIOUSCONFDIR}"/* "${CONFDIR}"/
-
-    for f in "${CONFDIR}"/conf.d/*
-    do
-        sed -i -e "s#${PREVIOUSCONFDIR}#$CONFDIR#g" "$f"
-        sed -i -e "s#/Applications/Server.app/Contents/ServerRoot/usr/libexec/dovecot#$LIBEXECDIR#g" "$f"
-        sed -i -e "s#/Library/Logs/Mail#/usr/local/var/log/dovecot#g" "$f"
-    done
-    sed -i -e "s/^aps_topic/#aps_topic/g" "$CONF"
-    rm -f "${CONFDIR}/conf.d/*-e" "${CONF}-e"
-
-    : $LIBEXECDIR
-    mkdir -p "$LIBEXECDIR"
-    cp "${pathtome}/additional-scripts/quota-exceeded.sh" "$LIBEXECDIR"
-    cp "${pathtome}/additional-scripts/quota-warning.sh" "$LIBEXECDIR"
-else
-    : TBD
-fi
-
-cat <<_LOCAL > "${CONFDIR}/local.conf"
-#
+cat <<_MAIN > "${CONFDIR}/dovecot.conf"
+#######################
+# https://wiki2.dovecot.org
 # https://xdeb.org/post/2014/03/07/running-dovecot-as-a-local-only-imap-server-on-os-x/
-#
-# Login user is internally used by login processes. This is the most untrusted
-# user in Dovecot system. It shouldn't have access to anything at all.
+default_internal_user = _dovecot
+default_internal_group = mail
 default_login_user = _dovenull
 
-# Internal user is used by unprivileged processes. It should be separate from
-# login user, so that login processes can't disturb other processes.
-default_internal_user = _dovecot
+protocols = imap lmtp sieve
+login_greeting = Dovecot ready.
+base_dir = /var/run/dovecot
+verbose_proctitle = yes
 
-# Internal group is expected to be the primary group of the default_internal_user.
-default_internal_group = mail
-_LOCAL
+#######################
+# Logging
+#
+# Log unsuccessful authentication attempts and the reasons why they failed.
+auth_verbose = yes
 
+# In case of password mismatches, log the attempted password. Valid values are
+# no, plain and sha1. sha1 can be useful for detecting brute force password
+# attempts vs. user simply trying the same password over and over again.
+auth_verbose_passwords = yes
+
+# Even more verbose logging for debugging purposes. Shows for example SQL
+# queries.
+auth_debug = yes
+
+# In case of password mismatches, log the passwords and used scheme so the
+# problem can be debugged. Enabling this also enables auth_debug.
+auth_debug_passwords = yes
+
+# Enable mail process debugging. This can help you figure out why Dovecot
+# isn't finding your mails.
+mail_debug = yes
+
+log_path       = /usr/local/var/log/dovecot/mail-err.log
+info_log_path  = /usr/local/var/log/dovecot/mail-info.log
+debug_log_path = /usr/local/var/log/dovecot/mail-debug.log
+plugin {
+  # Events to log. Also available: flag_change append
+  #mail_log_events = delete undelete expunge copy mailbox_delete mailbox_rename
+  # Available fields: uid, box, msgid, from, subject, size, vsize, flags
+  # size and vsize are available only for expunge and copy events.
+  #mail_log_fields = uid box msgid size
+}
+login_log_format_elements = user=<%u> method=%m rip=%r lip=%l mpid=%e %c
+mail_log_prefix = "%s(pid %p user %u): "
+
+!include conf.d/*.conf
+!include_try local.conf
+_MAIN
+
+: create conf sub-dir
+mkdir -p "${CONFDIR}/conf.d"
 chown -R "$OWNERID" "${CONFDIR}"
+
+: $LIBEXECDIR
+mkdir -p "$LIBEXECDIR"
+cp "${pathtome}/additional-scripts/quota-exceeded.sh" "$LIBEXECDIR"
+cp "${pathtome}/additional-scripts/quota-warning.sh" "$LIBEXECDIR"
+
+: Create link fo /var/log
 ln -fhs /usr/local/var/log/dovecot /var/log/dovecot
 
+: PAM
+if [ -f /etc/pam.d/dovecot ]; then
+    cp /etc/pam.d/dovecot{,."$backupdate"}
+fi
+
+cat <<_PAM > /etc/pam.d/dovecot
+auth       required       pam_opendirectory.so try_first_pass
+account    required       pam_nologin.so
+account    required       pam_opendirectory.so
+password   required       pam_opendirectory.so
+_PAM
+
+if [ -f "/etc/pam.d/dovecot.$backupdate" ] && \
+   [ "$( md5 -q /etc/pam.d/dovecot )" = "$( md5 -q "/etc/pam.d/dovecot.$backupdate" )" ]; then
+    rm -f "/etc/pam.d/dovecot.$backupdate"
+fi
+
 : Start daemon
-# brew services start dovecot
+echo "To start/stop dovecot, use brew sub command."
+echo "sudo brew services [start|stop] dovecot"
+
+#if [ -d "$PREVIOUSCONFDIR" ]; then
+#    mv "${CONFDIR}" "${CONFDIR}.backup.at.$backupdate"
+#    mkdir -p "${CONFDIR}"
+#    cp -a "${PREVIOUSCONFDIR}"/* "${CONFDIR}"/
+#
+#    for f in "${CONFDIR}"/conf.d/*
+#    do
+#        sed -i -e "s#${PREVIOUSCONFDIR}#$CONFDIR#g" "$f"
+#        sed -i -e "s#/Applications/Server.app/Contents/ServerRoot/usr/libexec/dovecot#$LIBEXECDIR#g" "$f"
+#        sed -i -e "s#/Library/Logs/Mail#/usr/local/var/log/dovecot#g" "$f"
+#    done
+#    sed -i -e "s/^aps_topic/#aps_topic/g" "$CONF"
+#    rm -f "${CONFDIR}/conf.d/*-e" "${CONF}-e"
 
 #       /usr/local/etc/dovecot/dovecot.conf
 #              Dovecot's main configuration file.
