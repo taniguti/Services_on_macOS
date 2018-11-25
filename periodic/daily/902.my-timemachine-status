@@ -7,7 +7,8 @@ then
 fi
 
 TMSTATUS="$( /usr/libexec/PlistBuddy -c "print AutoBackup" /Library/Preferences/com.apple.TimeMachine.plist )"
-if [ "$TMSTATUS" != "true" ]; then
+
+if [ "${TMSTATUS:-true}" != "true" ]; then
 	daily_my_timemachine_state=NO
 fi
 
