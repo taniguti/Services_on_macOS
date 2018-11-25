@@ -1,56 +1,56 @@
-#!/bin/sh
+#!/bin/bash
 
 if [ -r /etc/defaults/periodic.conf ]
 then
-	. /etc/defaults/periodic.conf
-	source_periodic_confs
+    . /etc/defaults/periodic.conf
+    source_periodic_confs
 fi
 
 SA="/Applications/Server.app/Contents/ServerRoot/usr/sbin/serveradmin"
-if [ ! -x $SA ]; then
-	echo "$SA not found."
-	exit 1
+if [ ! -x "$SA" ]; then
+    echo "$SA not found."
+    exit 1
 fi
 
-if [ `$SA status afp | grep -c RUNNING` -eq 1 ] ; then
-	afp_state=YES
+if [ "$( "$SA" status afp | grep -c RUNNING )" -eq 1 ] ; then
+  afp_state=YES
 fi
 
 case "${afp_state:-NO}" in
     [Yy][Ee][Ss])
-	echo ""
-	tmpfile=/tmp/`uuidgen`
-	echo "Number of APF Current connections:"
-	$SA fullstatus afp|grep  currentConnections 
-	$SA command afp:command=getConnectedUsers > $tmpfile
-	NC=`awk -F: '{print $4}' $tmpfile | sort | uniq | wc -l`
-	echo "Number of Connected Users (afp:command=getConnectedUsers) = ${NC:=0}"
-	if [ $NC -gt 15 ]; then
-		MYIPADDR=`host \`hostname\` | awk '{print $4}'`	
-		echo "netstat -n | grep ${MYIPADDR}.548"
-		netstat -n | grep ${MYIPADDR}.548
-		echo ""
-		echo "IP address of connected users:"
-		awk -F: '{print $5}' $tmpfile | grep ipAddress | sort | uniq -c
-		
-		echo "Force restarted AFP service."
-		$SA stop  afp; sleep 3
-		$SA start afp; sleep 3
-		echo "AFP service Restarted:"
-		$SA status afp 
-		$SA fullstatus afp|grep  currentConnections 
-		$SA command afp:command=getConnectedUsers > $tmpfile
-		NC=`awk -F: '{print $4}' $tmpfile | sort | uniq | wc -l`
-		echo "Number of Connected Users (afp:command=getConnectedUsers) = ${NC:-0}"
-		echo "netstat -n | grep ${MYIPADDR}.548"
-		netstat -n | grep ${MYIPADDR}.548
-	fi
-	rm $tmpfile
-	rc=0	
-	;;
-   *)
-	rc=0
-	;;
+        echo ""
+        tmpfile="$( mktemp )"
+        echo "Number of APF Current connections:"
+        "$SA" fullstatus afp | grep currentConnections
+        "$SA" command afp:command=getConnectedUsers > "$tmpfile"
+        NC="$( awk -F: '{print $4}' "$tmpfile" | sort | uniq | wc -l )"
+        echo "Number of Connected Users (afp:command=getConnectedUsers) = ${NC:=0}"
+        if [ "$NC" -gt 15 ]; then
+            MYIPADDR="$( host "$( hostname )" | awk '{print $NF}' )"
+            echo "netstat -n | grep ${MYIPADDR}.548"
+            netstat -n | grep "${MYIPADDR}.548"
+            echo ""
+            echo "IP address of connected users:"
+            awk -F: '{print $5}' "$tmpfile" | grep ipAddress | sort | uniq -c
+
+            echo "Force restarted AFP service."
+            "$SA" stop  afp; sleep 3
+            "$SA" start afp; sleep 3
+            echo "AFP service Restarted:"
+            "$SA" status afp
+            "$SA" fullstatus afp | grep  currentConnections
+            "$SA" command afp:command=getConnectedUsers > "$tmpfile"
+            NC="$( awk -F: '{print $4}' "$tmpfile" | sort | uniq | wc -l )"
+            echo "Number of Connected Users (afp:command=getConnectedUsers) = ${NC:-0}"
+            echo "netstat -n | grep ${MYIPADDR}.548"
+            netstat -n | grep "${MYIPADDR}.548"
+        fi
+        rm "$tmpfile"
+        rc=0
+        ;;
+    *)
+        rc=0
+        ;;
 esac
 
 exit $rc

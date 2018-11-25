@@ -6,8 +6,8 @@ then
 	source_periodic_confs
 fi
 
-APNs_STATUS=`/Applications/Server.app/Contents/ServerRoot/usr/sbin/serveradmin status devicemgr | /usr/bin/awk '{print $3}' | tr -d \"`
-if [ ${APNs_STATUS:-x} != "RUNNING" ]; then
+APNs_STATUS="$( /Applications/Server.app/Contents/ServerRoot/usr/sbin/serveradmin status devicemgr | /usr/bin/awk '{print $3}' | tr -d \" )"
+if [ "${APNs_STATUS:-x}" != "RUNNING" ]; then
 	daily_state_APNS=NO
 fi
 

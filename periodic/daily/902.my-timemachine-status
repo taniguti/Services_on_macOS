@@ -6,12 +6,10 @@ then
 	source_periodic_confs
 fi
 
-TMSTATUS=`/usr/libexec/PlistBuddy -c "print AutoBackup" /Library/Preferences/com.apple.TimeMachine.plist`
-if [ $TMSTATUS != "true" ]; then
+TMSTATUS="$( /usr/libexec/PlistBuddy -c "print AutoBackup" /Library/Preferences/com.apple.TimeMachine.plist )"
+if [ "$TMSTATUS" != "true" ]; then
 	daily_my_timemachine_state=NO
 fi
-
-# /usr/bin/mdutil -i off /Volumes/DroboTM/Backups.backupdb > /dev/null
 
 echo ""
 case "${daily_my_timemachine_state:-NO}" in
