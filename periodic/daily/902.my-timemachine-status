@@ -15,7 +15,6 @@ fi
 echo ""
 case "${daily_my_timemachine_state:-NO}" in
     [Yy][Ee][Ss])
-		echo "Time Machine Backup for this Mac Status: AutoBackup Enabled"
 		echo "The last 10 snapshots:"
 		echo "---------------------------------------------------"
 		tmutil listbackups | tail | awk '{print "    "$0}'
