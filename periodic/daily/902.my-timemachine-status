@@ -6,7 +6,7 @@ then
 	source_periodic_confs
 fi
 
-TMSTATUS="$( /usr/libexec/PlistBuddy -c "print AutoBackup" /Library/Preferences/com.apple.TimeMachine.plist )"
+TMSTATUS="$( /usr/libexec/PlistBuddy -c "print AutoBackup" /Library/Preferences/com.apple.TimeMachine.plist  2> /dev/null )"
 
 if [ "${TMSTATUS:-true}" != "true" ]; then
 	daily_my_timemachine_state=NO
