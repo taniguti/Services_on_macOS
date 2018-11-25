@@ -1,7 +1,6 @@
 #!/bin/bash
 
-if [ -r /etc/defaults/periodic.conf ]
-then
+if [ -r /etc/defaults/periodic.conf ]; then
     . /etc/defaults/periodic.conf
     source_periodic_confs
 fi

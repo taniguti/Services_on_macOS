@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 if [ -r /etc/defaults/periodic.conf ]
 then
@@ -11,15 +11,15 @@ if [ "${APNs_STATUS:-x}" != "RUNNING" ]; then
     daily_state_APNS=NO
 fi
 
-echo ""
 case "${daily_state_APNS:-NO}" in
     [Yy][Ee][Ss])
+        echo ""
         echo "Following process using remote Apple Push Notification Servie."
         echo "--------------------------------------------------------------"
         /usr/local/bin/APNs_check
         ;;
     *)
-        echo "Do not check about availablity for Apple Notification Service"
+        : "Do not check about availablity for Apple Notification Service"
         rc=0
         ;;
 esac

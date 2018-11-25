@@ -1,7 +1,6 @@
 #!/bin/bash
 
-if [ -r /etc/defaults/periodic.conf ]
-then
+if [ -r /etc/defaults/periodic.conf ]; then
     . /etc/defaults/periodic.conf
     source_periodic_confs
 fi
@@ -11,13 +10,17 @@ case "${daily_timemachine_clients_state:-NO}" in
     echo ""
     echo "Time Machine Backup Client Status:"
         tempfile="$( mktemp )"
-        if [ "$( sw_vers -productVersion | awk -F. '{print $2}' )" -ge 13 ]; then
-        /Applications/Server.app/Contents/ServerRoot/usr/sbin/serveradmin settings sharing | \
-            grep "timeMachineBackup =" | \
-            awk -F: '{print $4}'| uniq > "$tempfile"
+        if [ -x /Applications/Server.app/Contents/ServerRoot/usr/sbin/serveradmin ]; then
+            if [ "$( sw_vers -productVersion | awk -F. '{print $2}' )" -ge 13 ]; then
+            /Applications/Server.app/Contents/ServerRoot/usr/sbin/serveradmin settings sharing | \
+                grep "timeMachineBackup =" | \
+                awk -F: '{print $4}'| uniq > "$tempfile"
+            else
+            /Applications/Server.app/Contents/ServerRoot/usr/sbin/serveradmin settings timemachine | \
+                awk -F: '{print $4}'| uniq > "$tempfile"
+            fi
         else
-        /Applications/Server.app/Contents/ServerRoot/usr/sbin/serveradmin settings timemachine | \
-            awk -F: '{print $4}'| uniq > "$tempfile"
+           : aa
         fi
         cat "$tempfile" | while read LINE
         do
@@ -35,7 +38,7 @@ case "${daily_timemachine_clients_state:-NO}" in
             for i in "$( ls -d1 *.sparsebundle )"
             do
                 if [ -f "$i/com.apple.TimeMachine.MachineID.plist" ]; then
-                    TMCLIENTNAME="$( basename $i .sparsebundle )"
+                    TMCLIENTNAME="$( basename "$i" .sparsebundle )"
                     echo "${TMCLIENTNAME}:"
                     /usr/libexec/PlistBuddy -c print "$i/com.apple.TimeMachine.MachineID.plist" | grep =
                 fi

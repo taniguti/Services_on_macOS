@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 if [ -r /etc/defaults/periodic.conf ]
 then
@@ -12,16 +12,16 @@ if [ "${TMSTATUS:-true}" != "true" ]; then
 	daily_my_timemachine_state=NO
 fi
 
-echo ""
 case "${daily_my_timemachine_state:-NO}" in
     [Yy][Ee][Ss])
+        echo ""
 		echo "The last 10 snapshots:"
 		echo "---------------------------------------------------"
 		tmutil listbackups | tail | awk '{print "    "$0}'
 		rc=$?
 		;;
 	*)
-		echo "Time Machine Backup for this Mac Status: AutoBackup Disabled"
+		: "Time Machine Backup for this Mac Status: AutoBackup Disabled"
 		rc=0
 		;;
 esac
