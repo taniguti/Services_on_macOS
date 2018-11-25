@@ -5,22 +5,24 @@ if [ -r /etc/defaults/periodic.conf ]; then
     source_periodic_confs
 fi
 
+if [ -x /Applications/Server.app/Contents/ServerRoot/usr/sbin/serveradmin ]; then
+    echo "serveradmin not found."
+    daily_timemachine_clients_state=NO
+fi
+
 case "${daily_timemachine_clients_state:-NO}" in
     [Yy][Ee][Ss])
     echo ""
     echo "Time Machine Backup Client Status:"
         tempfile="$( mktemp )"
-        if [ -x /Applications/Server.app/Contents/ServerRoot/usr/sbin/serveradmin ]; then
-            if [ "$( sw_vers -productVersion | awk -F. '{print $2}' )" -ge 13 ]; then
+        macosver="$$( sw_vers -productVersion | awk -F. '{print $2}' )"
+        if [  "$macosver" -ge 13 ] then
             /Applications/Server.app/Contents/ServerRoot/usr/sbin/serveradmin settings sharing | \
-                grep "timeMachineBackup =" | \
-                awk -F: '{print $4}'| uniq > "$tempfile"
-            else
-            /Applications/Server.app/Contents/ServerRoot/usr/sbin/serveradmin settings timemachine | \
-                awk -F: '{print $4}'| uniq > "$tempfile"
-            fi
+            grep "timeMachineBackup =" | \
+            awk -F: '{print $4}'| uniq > "$tempfile"
         else
-           : aa
+            /Applications/Server.app/Contents/ServerRoot/usr/sbin/serveradmin settings timemachine | \
+           awk -F: '{print $4}'| uniq > "$tempfile"
         fi
         cat "$tempfile" | while read LINE
         do
