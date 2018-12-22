@@ -1,0 +1,4 @@
+#!/bin/bash
+
+sudo brew services restart knot
+sudo brew services restart knot-resolver
