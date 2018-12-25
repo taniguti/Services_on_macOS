@@ -128,6 +128,12 @@ if [ -f "/etc/pam.d/dovecot.$backupdate" ] && \
     rm -f "/etc/pam.d/dovecot.$backupdate"
 fi
 
+DHPARAM=/usr/local/var/db/dovecot/dh.pem
+if [ ! -f "$DHPARAM" ]; then
+    mkdir -p "$( dirname "$DHPARAM" )"
+    openssl dhparam 4096 > "$DHPARAM"
+fi
+
 : Start daemon
 echo "To start/stop dovecot, use brew sub command."
 echo "sudo brew services [start|stop] dovecot"

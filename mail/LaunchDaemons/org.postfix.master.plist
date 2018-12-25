@@ -13,13 +13,9 @@
 		<string>/usr/local/etc/postfix</string>
 	</array>
 	<key>EnablePressuredExit</key>
-	<true/>
+	<false/>
 	<key>ProcessType</key>
 	<string>Background</string>
-	<key>QueueDirectories</key>
-	<array>
-		<string>/Library/Server/Mail/Data/spool/maildrop</string>
-	</array>
 	<key>OnDemand</key>
 	<false/>
 </dict>

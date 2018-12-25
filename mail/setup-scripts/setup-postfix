@@ -140,7 +140,7 @@ fi
 # http://www.postfix.org/wip.html
 postconf -M -c "$confdir" pickup/fifo="pickup fifo n - n 60 1 pickup"
 postconf -P -c "$confdir" "pickup/fifo/content_filter="
-postconf -M -c "$confdir" dovecot/unix="dovecot unix - n n - 25 pipe flags=DRhu user=_dovecot:mail argv=/usr/local/opt/devecot/libexec/dovecot/dovecot-lda -d \${user}"
+postconf -M -c "$confdir" dovecot/unix="dovecot unix - n n - 25 pipe flags=DRhu user=_dovecot:mail argv=/usr/local/opt/dovecot/libexec/dovecot/dovecot-lda -d \${user}"
 
 if [ -x "/usr/libexec/postfix/greylist.pl" ]; then
     postconf -M -c "$confdir" policy/unix="policy unix - n n - - spawn user=nobody:mail argv=/usr/bin/perl /usr/libexec/postfix/greylist.pl"

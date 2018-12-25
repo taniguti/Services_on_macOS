@@ -28,9 +28,5 @@
 		<key>NumberOfFiles</key>
 		<integer>8192</integer>
 	</dict>
-	<key>StandardErrorPath</key>
-	<string>/var/log/dovecot/mail-err.log</string>
-	<key>StandardOutPath</key>
-	<string>/var/log/dovecot/mail-info.log</string>
 </dict>
 </plist>
