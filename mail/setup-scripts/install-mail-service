@@ -1,11 +1,22 @@
 #!/bin/bash
 #-
+#- install-mail-service
+#-  -C path to CA-CERT
+#-  -K path to Server Certificate private key
+#-  -S path to Server Certificate file
+#-  -H name of mail server
+#-  -h : show this message.
 #-
+#- But if your server has certificates of let's encrypt,
+#- This script will use it automatically.
+#- So you just type like this;
 #-
+#-  ./install-mail-service
 #-
-#-
-#-
-#-
+#- ## DO NOT USE with sudo or as root.
+#- ## Required to install dovecot via homebrew.
+#- ##
+#- ## brew install dovecot --with-pigeonhole --with-pam
 #-
 
 function _readlink(){
@@ -34,7 +45,7 @@ if [ "$( whoami )" = root ]; then
     exit 1
 fi
 
-while getopts C:H:K:P:h sw
+while getopts C:H:K:S:h sw
 do
     case "$sw" in
         C )
@@ -43,7 +54,7 @@ do
         K )
             tlskey="$OPTARG"
             ;;
-        P )
+        S )
             tlscert="$OPTARG"
             ;;
         H )
