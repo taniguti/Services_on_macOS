@@ -87,7 +87,7 @@ else
     fi
 fi
 if [ "${tls_enabled:-no}" = yes ]; then
-    tlsoptions="-C $tlsca -P $tlscert -K $tlskey"
+    tlsoptions="-C $tlsca -S $tlscert -K $tlskey"
 fi
 
 # dovecot
