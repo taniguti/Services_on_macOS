@@ -1,0 +1,11 @@
+#!/bin/bash
+
+if [ "$( whoami )" = root ]; then
+    DO_SUDO="sudo"
+fi
+
+$DO_SUDO mkdir -p /Library/WebServer/Documents/ExportedWikis
+$DO_SUDO chown _teamsserver /Library/WebServer/Documents/ExportedWikis
+$DO_SUDO wikiadmin export -all -format pages -path /Library/WebServer/Documents/ExportedWikis
+$DO_SUDO chown -R root:_www /Library/WebServer/Documents/ExportedWikis
+echo "Open http://(yourserver):8080/ExportedWikis/"
