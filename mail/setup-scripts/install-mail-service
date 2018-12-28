@@ -28,7 +28,11 @@ function _readlink(){
 
 fullpath_to_me="$( _readlink "$0" )"
 pathtome="$( dirname "$fullpath_to_me" )"
-if [ "$( whoami )" != root ]; then doAsRoot='sudo' ; fi
+if [ "$( whoami )" = root ]; then
+    echo "Do not call me with sudo"
+    echo "Use an user who has administrator right."
+    exit 1
+fi
 
 while getopts C:H:K:P:h sw
 do
@@ -67,8 +71,7 @@ else
         tlsca="/etc/letsencrypt/live/${mailservername}/fullchain.pem"
         tlskey="/etc/letsencrypt/live/${mailservername}/privkey.pem"
         echo "Found Let's Encrypt certificate. Use it."
-        chgrp certusers /etc/letsencrypt/{archive,live,keys}
-        chmod 750 /etc/letsencrypt/{archive,live,keys}
+        chmod 755 /etc/letsencrypt/{archive,live}
         tls_enabled=yes
     fi
 fi
@@ -79,13 +82,15 @@ fi
 # dovecot
 IsDovecot="$( brew info dovecot | grep "Not installed" )"
 if [ "$IsDovecot" = "Not installed" ]; then
-    cat <_MEG
+    cat << _MSG
 install with homebrew
     brew install dovecot --with-pigeonhole --with-pam
 _MSG
     exit 1
 fi
-$doAsRoot eval "${pathtome}/setup-dovecot" -H "$mailservername" "$tlsoptions"
 
-# postfix
-$doAsRoot eval "${pathtome}/setup-postfix" -H "$mailservername" "$tlsoptions"
+# dovecot setup
+sudo eval "${pathtome}/setup-dovecot" -H "$mailservername" "$tlsoptions"
+
+# postfix setup
+sudo eval "${pathtome}/setup-postfix" -H "$mailservername" "$tlsoptions"
