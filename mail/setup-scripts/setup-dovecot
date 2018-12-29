@@ -70,6 +70,7 @@ OWNERID="$( stat -f "%u:%g" "$CONFDIR" )"
 WORKDIR="$( mktemp -d )"
 backupdate="$( date +%Y%m%d-%H%M%S )"
 maildir=/usr/local/var/mail/users
+spooldir="/usr/local/var/mail/spool"
 
 if [ -z "$mailservername" ]; then
     mailservername="$( hostname )"
@@ -246,7 +247,7 @@ service submission-login {
   }
 }
 service lmtp {
-  unix_listener /usr/local/var/mail/spool/private/dovecot-lmtp {
+  unix_listener ${spooldir}/private/dovecot-lmtp {
     mode = 0666
     user = _postfix
     group = _postfix
@@ -272,7 +273,7 @@ service auth {
     #group =
   }
   # Postfix smtp-auth
-  unix_listener /usr/local/var/spool/private/auth {
+  unix_listener ${spooldir}/private/auth {
     mode = 0666
     user = _postfix
     group = _postfix
