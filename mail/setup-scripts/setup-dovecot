@@ -4,7 +4,7 @@
 #- Usage:
 #-     Use with sudo.
 #-
-#-     setup-dovecot [ -C /path/to/CA-chain.pem -P /path/to/server-cert.pem -K /path/to/cert-key.pem ]
+#-     setup-dovecot [ -C /path/to/CA-chain.pem -S /path/to/server-cert.pem -K /path/to/cert-key.pem ]
 #-          [ -H <mail server fqdn> ] [ -h ]
 #-
 
@@ -40,7 +40,7 @@ function install_file(){
     fi
 }
 
-while getopts C:H:K:P:h sw
+while getopts C:H:K:S:h sw
 do
     case "$sw" in
         C )
@@ -49,7 +49,7 @@ do
         K )
             tlskey="$OPTARG"
             ;;
-        P )
+        S )
             tlscert="$OPTARG"
             ;;
         H )
@@ -87,8 +87,8 @@ if [ ! -f "$DHPARAM" ]; then
     openssl dhparam 4096 > "$DHPARAM"
 fi
 
-mkdir -p "$CONFDIR" "${CONFDIR}/conf.d" "${CONFDIR}/sieve" "$LIBEXECDIR" "$maildir"
-chown_dovecot:mail "$maildir"
+mkdir -p "$CONFDIR" "${CONFDIR}/conf.d" "${CONFDIR}/sieve" "$LIBEXECDIR" "$maildir" /usr/local/var/log/dovecot
+chown _dovecot:mail "$maildir"
 chmod 775 "$maildir"
 
 : $LIBEXECDIR
@@ -96,11 +96,10 @@ cp "${pathtome}/additional-scripts/quota-exceeded.sh" "$LIBEXECDIR"
 cp "${pathtome}/additional-scripts/quota-warning.sh" "$LIBEXECDIR"
 
 : Create link fo /var/log
-ln -fhs /usr/local/var/log/dovecot /var/log/dovecot
-chgrp mail /usr/local/var/log/dovecot
 touch /usr/local/var/log/dovecot/{mail-debug.log,mail-err.log,mail-info.log}
 chmod 660 /usr/local/var/log/dovecot/{mail-debug.log,mail-err.log,mail-info.log}
-chgrp mail /usr/local/var/log/dovecot/{mail-debug.log,mail-err.log,mail-info.log}
+chgrp -R mail /usr/local/var/log/dovecot
+ln -fhs /usr/local/var/log/dovecot /var/log/dovecot
 
 : PAM dovecot
 cat <<_PAM > "${WORKDIR}/dovecot"
