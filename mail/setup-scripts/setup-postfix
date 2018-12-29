@@ -77,7 +77,7 @@ fi
 : main.cf
 touch "${confdir}"/{white-list.txt,black-list.txt,reject-list.txt}
 postconf -c "$confdir" -e "myhostname = $mailservername"
-postconf -c "$confdir" -e "mydomain = $(echo $mailservername | awk -F. '{OFS=".";$1=""}1' | sed 's/^\.//')"
+postconf -c "$confdir" -e "mydomain = $(echo "$mailservername" | awk -F. '{OFS=".";$1=""}1' | sed 's/^\.//')"
 postconf -c "$confdir" -e "alias_database = hash:${confdir}/aliases"
 postconf -c "$confdir" -e "alias_maps = hash:${confdir}/aliases"
 postconf -c "$confdir" -e "command_directory = /usr/sbin"
@@ -103,6 +103,8 @@ postconf -c "$confdir" -e "smtpd_sasl_local_domain = $mailservername"
 postconf -c "$confdir" -e "smtpd_sender_restrictions = permit_mynetworks, check_client_access regexp:${confdir}/white-list.txt, check_client_access regexp:${confdir}/black-list.txt, check_client_access regexp:${confdir}/reject-list.txt"
 postconf -c "$confdir" -e "virtual_alias_domains = hash:${confdir}/virtual_domains"
 postconf -c "$confdir" -e "virtual_alias_maps = hash:${confdir}/virtual_users"
+postconf -# -c "$confdir" "alternate_config_directories"
+postconf -# -c "$confdir" "dovecot_destination_recipient_limit"
 postconf -# -c "$confdir" "smtpd_use_pw_server"
 postconf -# -c "$confdir" "enable_server_options"
 postconf -# -c "$confdir" "smtpd_pw_server_security_options"
@@ -160,17 +162,29 @@ if [ -f "${datadir}/guid_device_maps.plist" ]; then
     chown _postfix:mail "${datadir}/guid_device_maps.plist"
 fi
 
+: Rebuild DBs
+rm -f "${confdir}/aliases.db"
+postalias -c "$confdir" "${confdir}/aliases"
+for mapfile in "${confdir}/system_user_maps" "${confdir}/virtual_domains" "${confdir}/virtual_users" "${confdir}/rbl_whitelist"
+do
+    rm -f "${mapfile}.db"
+    if [ -f "$mapfile" ]; then
+        postmap -c "$confdir" "$mapfile"
+    fi
+done
+
 : Prepare Launchd.plist
-if [ -f /Library/LaunchDaemons/org.postfix.master.plist ]; then
-    if [ "$( md5 -q /Library/LaunchDaemons/org.postfix.master.plist )" != "$( md5 -q "$launchdplist" )" ]; then
-        mv /Library/LaunchDaemons/org.postfix.master.plist{,backup.at."$backupdate"}
-        cp "$launchdplist" /Library/LaunchDaemons/org.postfix.master.plist
+postfixPlist="/Library/LaunchDaemons/$( basename "$launchdplist" )"
+if [ -f "$postfixPlist" ]; then
+    if [ "$( md5 -q "$postfixPlist" )" != "$( md5 -q "$launchdplist" )" ]; then
+        mv ${postfixPlist}{,.backup.at."$backupdate"}
+        cp "$launchdplist" "$postfixPlist"
     fi
 else
-    cp "$launchdplist" /Library/LaunchDaemons/org.postfix.master.plist
+    cp "$launchdplist" "$postfixPlist"
 fi
-chown 0:0 /Library/LaunchDaemons/org.postfix.master.plist
-chmod 644 /Library/LaunchDaemons/org.postfix.master.plist
+chown 0:0 "$postfixPlist"
+chmod 644 "$postfixPlist"
 
 postfix -c "$confdir" check ; r=$?
 if [ "$r" -eq 0 ]; then configcheck=OK ;fi
