@@ -101,7 +101,7 @@ _MSG
 fi
 
 # dovecot setup
-sudo eval "${pathtome}/setup-dovecot" -H "$mailservername" "$tlsoptions"
+eval sudo "${pathtome}/setup-dovecot" -H "$mailservername" "$tlsoptions"
 
 # postfix setup
-sudo eval "${pathtome}/setup-postfix" -H "$mailservername" "$tlsoptions"
+eval sudo "${pathtome}/setup-postfix" -H "$mailservername" "$tlsoptions"
