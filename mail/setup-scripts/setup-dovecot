@@ -1,4 +1,12 @@
 #!/bin/bash
+#-
+#- Set up dovecot on macOS
+#- Usage:
+#-     Use with sudo.
+#-
+#-     setup-dovecot [ -C /path/to/CA-chain.pem -P /path/to/server-cert.pem -K /path/to/cert-key.pem ]
+#-          [ -H <mail server fqdn> ] [ -h ]
+#-
 
 function _readlink(){
     c="$1"
@@ -18,73 +26,169 @@ function _readlink(){
     fi
 }
 
+function install_file(){
+    distdir="$1"
+    new="$2"
+    current="${distdir}/$( basename "$new" )"
+    if [ -f "$current" ]; then
+        if [ "$( md5 -q "$current" )" != "$( md5 -q "$new" )" ]; then
+            mv "$current" "${current}.${backupdate}"
+            cp "$new" "$current"
+        fi
+    else
+        cp "$new" "$current"
+    fi
+}
+
+while getopts C:H:K:P:h sw
+do
+    case "$sw" in
+        C )
+            tlsca="$OPTARG"
+            ;;
+        K )
+            tlskey="$OPTARG"
+            ;;
+        P )
+            tlscert="$OPTARG"
+            ;;
+        H )
+            mailservername="$OPTARG"
+            ;;
+        * )
+            grep ^#- "$0" | cut -c 4-
+            exit 0
+            ;;
+    esac
+done
+
 fullpath_to_me=$( _readlink "$0" )
 pathtome=$( dirname "$fullpath_to_me" )
 CONFDIR="/usr/local/etc/dovecot"
 LIBEXECDIR="/usr/local/libexec/dovecot"
-CONF="${CONFDIR}/dovecot.conf"
 OWNERID="$( stat -f "%u:%g" "$CONFDIR" )"
+WORKDIR="$( mktemp -d )"
 backupdate="$( date +%Y%m%d-%H%M%S )"
+maildir=/usr/local/var/mail/users
 
-# PREVIOUSCONFDIR="/Library/Server/Mail/Config/dovecot"
-#default_internal_group=_dovecot
-#default_internal_user=_dovecot
-#default_login_user=_dovenull
-# _dovecot g- mail
-# _dovenull g- _dovenull
-
+if [ -z "$mailservername" ]; then
+    mailservername="$( hostname )"
+fi
 if [ -f "$tlsca" ] && [ -f "$tlscert" ] && [ -f "$tlskey" ]; then
-   tls_enabled=yes
+   tls_enabled=required
 else
    tls_enabled=no
 fi
 
-##--- TEST
-tls_enabled=yes
-tlsca=/usr/local/etc/certificates/Local-ROOTCA.pem
-tlscert=/usr/local/etc/certificates/pms01.vmnet3.com.pem
-tlskey=/usr/local/etc/certificates/pms01.vmnet3.com.np.key
-##--- TEST
+DHPARAM=/usr/local/var/db/dovecot/dh.pem
+if [ ! -f "$DHPARAM" ]; then
+    mkdir -p "$( dirname "$DHPARAM" )"
+    : Create $DHPARAM
+    openssl dhparam 4096 > "$DHPARAM"
+fi
 
-cat <<_MAIN > "${CONFDIR}/dovecot.conf"
-#######################
-# https://wiki2.dovecot.org
-# https://xdeb.org/post/2014/03/07/running-dovecot-as-a-local-only-imap-server-on-os-x/
+mkdir -p "$CONFDIR" "${CONFDIR}/conf.d" "${CONFDIR}/sieve" "$LIBEXECDIR" "$maildir"
+chown_dovecot:mail "$maildir"
+chmod 775 "$maildir"
+
+: $LIBEXECDIR
+cp "${pathtome}/additional-scripts/quota-exceeded.sh" "$LIBEXECDIR"
+cp "${pathtome}/additional-scripts/quota-warning.sh" "$LIBEXECDIR"
+
+: Create link fo /var/log
+ln -fhs /usr/local/var/log/dovecot /var/log/dovecot
+chgrp mail /usr/local/var/log/dovecot
+touch /usr/local/var/log/dovecot/{mail-debug.log,mail-err.log,mail-info.log}
+chmod 660 /usr/local/var/log/dovecot/{mail-debug.log,mail-err.log,mail-info.log}
+chgrp mail /usr/local/var/log/dovecot/{mail-debug.log,mail-err.log,mail-info.log}
+
+: PAM dovecot
+cat <<_PAM > "${WORKDIR}/dovecot"
+auth       required       pam_opendirectory.so try_first_pass
+account    required       pam_nologin.so
+account    required       pam_opendirectory.so
+password   required       pam_opendirectory.so
+_PAM
+install_file "/etc/pam.d/" "${WORKDIR}/dovecot"
+
+: dovecot.conf
+cat <<_MAIN > "${WORKDIR}/dovecot.conf"
+# You will find example config files in
+#  /usr/local/opt/dovecot/share/doc/dovecot/example-config
+#
+default_login_user = _dovenull
 default_internal_user = _dovecot
 default_internal_group = mail
-default_login_user = _dovenull
 
 protocols = imap lmtp sieve
 login_greeting = Dovecot ready.
-base_dir = /var/run/dovecot
+base_dir = /usr/local/var/run/dovecot
 verbose_proctitle = yes
 
-#######################
-# Logging
-#
-# Log unsuccessful authentication attempts and the reasons why they failed.
+!include conf.d/*.conf
+!include_try local.conf
+_MAIN
+install_file "$CONFDIR" "${WORKDIR}/dovecot.conf"
+
+: 10-auth.conf
+cat <<_AUTH > "${WORKDIR}/10-auth.conf"
+disable_plaintext_auth = no
+auth_username_format = %Ln
+auth_mechanisms = plain login
+!include auth-system.conf.ext
+_AUTH
+
+: auth-system.conf.ext
+cat <<_AUTH_EXT > "${WORKDIR}/auth-system.conf.ext"
+passdb {
+  driver = pam
+  args = dovecot
+}
+userdb {
+  driver = passwd
+}
+_AUTH_EXT
+
+: 10-director.conf
+cat <<_DIRECTOR > "${WORKDIR}/10-director.conf"
+service director {
+  unix_listener login/director {
+    #mode = 0666
+  }
+  fifo_listener login/proxy-notify {
+    #mode = 0666
+  }
+  unix_listener director-userdb {
+    #mode = 0600
+  }
+  inet_listener {
+    #port =
+  }
+}
+service imap-login {
+  #executable = imap-login director
+}
+service submission-login {
+  #executable = submission-login director
+}
+protocol lmtp {
+  #auth_socket_path = director-userdb
+}
+_DIRECTOR
+
+: 10-logging.conf
+cat <<_LOGGING > "${WORKDIR}/10-logging.conf"
+log_path = /usr/local/var/log/dovecot/mail-err.log
+info_log_path = /usr/local/var/log/dovecot/mail-info.log
+debug_log_path =  /usr/local/var/log/dovecot/mail-debug.log
+
 auth_verbose = yes
-
-# In case of password mismatches, log the attempted password. Valid values are
-# no, plain and sha1. sha1 can be useful for detecting brute force password
-# attempts vs. user simply trying the same password over and over again.
 auth_verbose_passwords = yes
-
-# Even more verbose logging for debugging purposes. Shows for example SQL
-# queries.
 auth_debug = yes
-
-# In case of password mismatches, log the passwords and used scheme so the
-# problem can be debugged. Enabling this also enables auth_debug.
 auth_debug_passwords = yes
-
-# Enable mail process debugging. This can help you figure out why Dovecot
-# isn't finding your mails.
 mail_debug = yes
+verbose_ssl = yes
 
-log_path       = /usr/local/var/log/dovecot/mail-err.log
-info_log_path  = /usr/local/var/log/dovecot/mail-info.log
-debug_log_path = /usr/local/var/log/dovecot/mail-debug.log
 plugin {
   # Events to log. Also available: flag_change append
   #mail_log_events = delete undelete expunge copy mailbox_delete mailbox_rename
@@ -92,80 +196,266 @@ plugin {
   # size and vsize are available only for expunge and copy events.
   #mail_log_fields = uid box msgid size
 }
+log_timestamp = "%b %d %H:%M:%S "
 login_log_format_elements = user=<%u> method=%m rip=%r lip=%l mpid=%e %c
-mail_log_prefix = "%s(pid %p user %u): "
+login_log_format = %$: %s
+mail_log_prefix = "%s(%u)<%{pid}><%{session}>: "
+_LOGGING
 
-!include conf.d/*.conf
-!include_try local.conf
-_MAIN
+: 10-mail.conf
+cat <<_MAIL > "${WORKDIR}/10-mail.conf"
+mail_location = maildir:${maildir}/%u
+namespace inbox {
+  inbox = yes
+}
+mail_uid = 27
+mail_gid = 27
+mail_access_groups = mail
+first_valid_uid = 500
+last_valid_uid = 0
+first_valid_gid = 20
+last_valid_gid = 499
+auth_socket_path = /usr/local/var/run/dovecot/auth-userdb
+protocol !indexer-worker {
+}
+mdbox_rotate_size = 200M
+mdbox_rotate_interval = 0
+_MAIL
 
-: create conf sub-dir
-mkdir -p "${CONFDIR}/conf.d"
-chown -R "$OWNERID" "${CONFDIR}"
+: 10-master.conf
+cat <<_MASTER > "${WORKDIR}/10-master.conf"
+service imap-login {
+  inet_listener imap {
+    #port = 143
+  }
+  inet_listener imaps {
+    #port = 993
+    #ssl = yes
+  }
+  # Number of connections to handle before starting a new process. Typically
+  # the only useful values are 0 (unlimited) or 1. 1 is more secure, but 0
+  # is faster. <doc/wiki/LoginProcess.txt>
+  #service_count = 1
+  # Number of processes to always keep waiting for more connections.
+  #process_min_avail = 0
+  # If you set service_count=0, you probably need to grow this.
+  #vsz_limit = \$default_vsz_limit
+}
+service submission-login {
+  inet_listener submission {
+    #port = 587
+  }
+}
+service lmtp {
+  unix_listener /usr/local/var/mail/spool/private/dovecot-lmtp {
+    mode = 0666
+    user = _postfix
+    group = _postfix
+  }
+}
+service imap {
+  # Most of the memory goes to mmap()ing files. You may need to increase this
+  # limit if you have huge mailboxes.
+  #vsz_limit = \$default_vsz_limit
+  # Max. number of IMAP processes (connections)
+  #process_limit = 1024
+}
+  # Max. number of POP3 processes (connections)
+  #process_limit = 1024
+service submission {
+  # Max. number of SMTP Submission processes (connections)
+  #process_limit = 1024
+}
+service auth {
+  unix_listener auth-userdb {
+    #mode = 0666
+    #user =
+    #group =
+  }
+  # Postfix smtp-auth
+  unix_listener /usr/local/var/spool/private/auth {
+    mode = 0666
+    user = _postfix
+    group = _postfix
+  }
+  # Auth process is run as this user.
+  #user = \$default_internal_user
+}
+service auth-worker {
+  # Auth worker process is run as root by default, so that it can access
+  # /etc/shadow. If this isn't necessary, the user should be changed to
+  # \$default_internal_user.
+  #user = root
+}
+service dict {
+  unix_listener dict {
+    #mode = 0600
+    #user =
+    #group =
+  }
+}
+_MASTER
 
-: $LIBEXECDIR
-mkdir -p "$LIBEXECDIR"
-cp "${pathtome}/additional-scripts/quota-exceeded.sh" "$LIBEXECDIR"
-cp "${pathtome}/additional-scripts/quota-warning.sh" "$LIBEXECDIR"
+: 10-ssl.conf
+cat <<_SSL > "${WORKDIR}/10-ssl.conf"
+# SSL/TLS support: yes, no, required. <doc/wiki/SSL.txt>
+ssl = $tls_enabled
+ssl_cert = <$tlscert
+ssl_key = <$tlskey
+ssl_ca = <$tlsca
+ssl_require_crl = yes
+ssl_dh = <$DHPARAM
+ssl_min_protocol = TLSv1
+ssl_cipher_list = ALL:!DH:!kRSA:!SRP:!kDHd:!DSS:!aNULL:!eNULL:!EXPORT:!DES:!3DES:!MD5:!PSK:!RC4:!ADH:!LOW@STRENGTH
+_SSL
 
-: Create link fo /var/log
-ln -fhs /usr/local/var/log/dovecot /var/log/dovecot
+: 15-lda.conf
+cat <<_LDA > "${WORKDIR}/15-lda.conf"
+postmaster_address = postmaster@%d
+protocol lda {
+  mail_plugins = \$mail_plugins sieve
+}
+_LDA
 
-: PAM
-if [ -f /etc/pam.d/dovecot ]; then
-    cp /etc/pam.d/dovecot{,."$backupdate"}
-fi
+: 15-mailboxes.conf
+cat <<_MAILBOXES > "${WORKDIR}/15-mailboxes.conf"
+namespace inbox {
+  mailbox Drafts {
+    special_use = \Drafts
+  }
+  mailbox Junk {
+    special_use = \Junk
+  }
+  mailbox Trash {
+    special_use = \Trash
+  }
+  mailbox Sent {
+    special_use = \Sent
+  }
+  mailbox "Sent Messages" {
+    special_use = \Sent
+  }
+}
+_MAILBOXES
 
-cat <<_PAM > /etc/pam.d/dovecot
-auth       required       pam_opendirectory.so try_first_pass
-account    required       pam_nologin.so
-account    required       pam_opendirectory.so
-password   required       pam_opendirectory.so
-_PAM
+: 20-imap.conf
+cat <<_IMAP > "${WORKDIR}/20-imap.conf"
+protocol imap {
+  # Space separated list of plugins to load (default is global mail_plugins).
+  #mail_plugins = \$mail_plugins
+  # Maximum number of IMAP connections allowed for a user from each IP address.
+  # NOTE: The username is compared case-sensitively.
+  #mail_max_userip_connections = 10
+}
+_IMAP
 
-if [ -f "/etc/pam.d/dovecot.$backupdate" ] && \
-   [ "$( md5 -q /etc/pam.d/dovecot )" = "$( md5 -q "/etc/pam.d/dovecot.$backupdate" )" ]; then
-    rm -f "/etc/pam.d/dovecot.$backupdate"
-fi
+: 20-lmtp.conf
+cat <<_LMTP > "${WORKDIR}/20-lmtp.conf"
+protocol lmtp {
+  mail_plugins = \$mail_plugins sieve
+}
+_LMTP
 
-DHPARAM=/usr/local/var/db/dovecot/dh.pem
-if [ ! -f "$DHPARAM" ]; then
-    mkdir -p "$( dirname "$DHPARAM" )"
-    openssl dhparam 4096 > "$DHPARAM"
-fi
+: 20-submission.conf
+cat <<_SUBMISSION > "${WORKDIR}/20-submission.conf"
+protocol submission {
+  # Space-separated list of plugins to load (default is global mail_plugins).
+  #mail_plugins = \$mail_plugins
+  # Maximum number of SMTP submission connections allowed for a user from
+  # each IP address.
+  # NOTE: The username is compared case-sensitively.
+  #mail_max_userip_connections = 10
+}
+_SUBMISSION
 
-: Start daemon
+: 90-acl.conf
+cat <<_ACL > "${WORKDIR}/90-acl.conf"
+plugin {
+  #acl = vfile:/usr/local/etc/dovecot/global-acls:cache_secs=300
+}
+plugin {
+  #acl_shared_dict = file:/usr/local/var/lib/dovecot/shared-mailboxes
+}
+_ACL
+
+: 90-plugin.conf
+cat <<_PLUGIN > "${WORKDIR}/90-plugin.conf"
+plugin {
+  #setting_name = value
+}
+_PLUGIN
+
+: 90-quota.conf
+cat <<_QUOTA > "${WORKDIR}/90-quota.conf"
+plugin {
+  #quota_rule = *:storage=1G
+  #quota_rule2 = Trash:storage=+100M
+  # LDA/LMTP allows saving the last mail to bring user from under quota to
+  # over quota, if the quota doesn't grow too high. Default is to allow as
+  # long as quota will stay under 10% above the limit. Also allowed e.g. 10M.
+  #quota_grace = 10%%
+  # Quota plugin can also limit the maximum accepted mail size.
+  #quota_max_mail_size = 100M
+}
+plugin {
+  #quota_warning = storage=95%% quota-warning 95 %u
+  #quota_warning2 = storage=80%% quota-warning 80 %u
+}
+plugin {
+  #quota = dirsize:User quota
+  #quota = maildir:User quota
+  #quota = dict:User quota::proxy::quota
+  #quota = fs:User quota
+}
+plugin {
+  #quota = dict:user::proxy::quota
+  #quota2 = dict:domain:%d:proxy::quota_domain
+  #quota_rule = *:storage=102400
+  #quota2_rule = *:storage=1048576
+}
+_QUOTA
+
+: 90-sieve.conf
+cat <<_SIEVE > "${WORKDIR}/90-sieve.conf"
+plugin {
+  sieve = file:~/sieve;active=~/.dovecot.sieve
+  sieve_default = ${CONFDIR}/sieve/default.sieve
+}
+_SIEVE
+for conf in "${WORKDIR}/10-auth.conf" \
+            "${WORKDIR}/auth-system.conf.ext" \
+            "${WORKDIR}/10-director.conf" \
+            "${WORKDIR}/10-logging.conf" \
+            "${WORKDIR}/10-mail.conf" \
+            "${WORKDIR}/10-master.conf" \
+            "${WORKDIR}/10-ssl.conf" \
+            "${WORKDIR}/15-lda.conf" \
+            "${WORKDIR}/15-mailboxes.conf" \
+            "${WORKDIR}/20-imap.conf" \
+            "${WORKDIR}/20-lmtp.conf" \
+            "${WORKDIR}/20-submission.conf" \
+            "${WORKDIR}/90-acl.conf" \
+            "${WORKDIR}/90-plugin.conf" \
+            "${WORKDIR}/90-quota.conf" \
+            "${WORKDIR}/90-sieve.conf"
+do
+    install_file "${CONFDIR}/conf.d" "$conf"
+done
+
+: default.sieve
+cat <<_DEFAULT.SIEVE > "${WORKDIR}/default.sieve"
+require ["fileinto"];
+# rule:[Spam]
+if header :contains "X-Spam" "yes" {
+    fileinto "INBOX.Spam";
+    stop;
+}
+_DEFAULT.SIEVE
+install_file "${CONFDIR}/sieve" "${WORKDIR}/default.sieve"
+
+chown -R "$OWNERID" "$CONFDIR"
+rm -rf "$WORKDIR"
+
+: Next step
 echo "To start/stop dovecot, use brew sub command."
 echo "sudo brew services [start|stop] dovecot"
-
-#if [ -d "$PREVIOUSCONFDIR" ]; then
-#    mv "${CONFDIR}" "${CONFDIR}.backup.at.$backupdate"
-#    mkdir -p "${CONFDIR}"
-#    cp -a "${PREVIOUSCONFDIR}"/* "${CONFDIR}"/
-#
-#    for f in "${CONFDIR}"/conf.d/*
-#    do
-#        sed -i -e "s#${PREVIOUSCONFDIR}#$CONFDIR#g" "$f"
-#        sed -i -e "s#/Applications/Server.app/Contents/ServerRoot/usr/libexec/dovecot#$LIBEXECDIR#g" "$f"
-#        sed -i -e "s#/Library/Logs/Mail#/usr/local/var/log/dovecot#g" "$f"
-#    done
-#    sed -i -e "s/^aps_topic/#aps_topic/g" "$CONF"
-#    rm -f "${CONFDIR}/conf.d/*-e" "${CONF}-e"
-
-#       /usr/local/etc/dovecot/dovecot.conf
-#              Dovecot's main configuration file.
-#
-#       /usr/local/etc/dovecot/dovecot-ldap.conf.ext
-#              Dovecot's LDAP authdb/userdb module configuration file.
-#
-#       /usr/local/etc/dovecot/dovecot-sql.conf.ext
-#              Dovecot's SQL authdb/userdb module configuration file.
-#
-#       /usr/local/etc/dovecot/dovecot-dict-sql.conf.ext
-#              Dovecot's dict configuration with SQL-backend.
-#
-#       /usr/local/etc/dovecot/conf.d/auth-*-conf.ext
-#              Configuration files of different authentication modules.
-#
-#       /usr/local/etc/dovecot/conf.d/*.conf
-#              Configuration files of different services and settings.
