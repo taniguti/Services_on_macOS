@@ -8,6 +8,11 @@
 #-          [ -H <mail server fqdn> ] [ -h ]
 #-
 
+if [ "$( whoami )" != root ]; then
+    echo "Use me with sudo"
+    exit 1
+fi
+
 function _readlink(){
     c="$1"
     f=$( basename "$c" )
