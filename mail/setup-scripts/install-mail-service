@@ -105,3 +105,7 @@ eval sudo "${pathtome}/setup-dovecot" -H "$mailservername" "$tlsoptions"
 
 # postfix setup
 eval sudo "${pathtome}/setup-postfix" -H "$mailservername" "$tlsoptions"
+
+# install mailc
+sudo mkdir -p /usr/local/sbin/
+ln -s "$( _readlink "${pathtome}/../tools/mailc" )" /usr/local/sbin/
