@@ -108,4 +108,4 @@ eval sudo "${pathtome}/setup-postfix" -H "$mailservername" "$tlsoptions"
 
 # install mailc
 sudo mkdir -p /usr/local/sbin/
-ln -s "$( _readlink "${pathtome}/../tools/mailc" )" /usr/local/sbin/
+ln -fhs "$( _readlink "${pathtome}/../tools/mailc" )" /usr/local/sbin/

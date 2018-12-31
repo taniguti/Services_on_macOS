@@ -475,9 +475,9 @@ do
         echo "[$( date "+%Y/%m/%d %H:%M:%S" )] Move previous maildir for $userdirname into $maildir." | tee -a "$maildirmigratelog"
         userdir="$( basename "$d" )"
         echo "[$( date "+%Y/%m/%d %H:%M:%S" )] $userdirname --> ../$userdir" >> "$maildirmigratelog"
-        echo mv "$d" "${maildir}/${userdirname}"
-        echo chown -R "${userdirname}:mail" "${maildir}/${userdirname}"
-        echo rm "$i"
+        mv "$d" "${maildir}/${userdirname}"
+        chown -R "${userdirname}:mail" "${maildir}/${userdirname}"
+        rm "$i"
     fi
 done
 
