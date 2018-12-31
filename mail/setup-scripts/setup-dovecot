@@ -483,6 +483,4 @@ do
     fi
 done
 
-: Next step
-echo "To start/stop dovecot, use brew sub command."
-echo "sudo brew services [start|stop] dovecot"
+echo "dovecot setup: done."

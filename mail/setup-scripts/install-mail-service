@@ -109,3 +109,15 @@ eval sudo "${pathtome}/setup-postfix" -H "$mailservername" "$tlsoptions"
 # install mailc
 sudo mkdir -p /usr/local/sbin/
 ln -fhs "$( _readlink "${pathtome}/../tools/mailc" )" /usr/local/sbin/
+
+: Next Steps
+cat <<_MSG
+To check configuration,
+    for postfix, type
+        postconf -c /usr/local/etc/postfix
+    for dovecot, type
+        dovecont -n
+
+To start mail service, type
+    sudo /usr/local/sbin/mailc start
+_MSG
