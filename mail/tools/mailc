@@ -5,23 +5,43 @@
 #-  mailc [start|stop|restart|status] [postfix|dovecot|all]
 #-
 
+postfixplist=/Library/LaunchDaemons/org.postfix.master.plist
+
+if [ "$( whoami )" != root ]; then
+    echo "Use me with sudo"
+    exit 1
+fi
+
+if [ ! -f "$postfixplist" ]; then
+    echo "Mail service is not set up as expected."
+    exit 1
+fi
+
 cmd="$(echo "$1" | tr "[:upper:]" "[:lower:]" )"
 target="$(echo "$2" | tr "[:upper:]" "[:lower:]" )"
 
 function startcmd(){
     if [ "$1" = postfix ]; then
+        launchctl load -Fw "$postfixplist"
     elif [ "$1" = dovecot ]; then
         brew services start dovecot
     else
+        echo "Start postfix"
+        launchctl load -Fw "$postfixplist"
+        echo "Start dovecot"
         brew services start dovecot
     fi
 }
 
 function stopcmd(){
     if [ "$1" = postfix ]; then
+        launchctl load -Fw "$postfixplist"
     elif [ "$1" = dovecot ]; then
         brew services stop dovecot
     else
+        echo "Stop postfix"
+        launchctl unload -Fw "$postfixplist"
+        echo "Stop dovecot"
         brew services stop dovecot
     fi
 }
