@@ -20,7 +20,7 @@ function _readlink(){
         d="$( cd "$(dirname "$c")" || exit 1 ; pwd )"
     else
         p="$( type -a "$c" | head -1 | awk '{$1="";$2=""; print $0}' | sed 's/^[ \t]*//' )"
-        d="$( dirname "$p" )"
+        d="$( cd "$(dirname "$p")" || exit 1 ; pwd )"
     fi
     if [ -L "${d}/${f}" ]; then
         cd "${d}" || exit 1
