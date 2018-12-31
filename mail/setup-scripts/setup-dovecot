@@ -8,6 +8,11 @@
 #-          [ -H <mail server fqdn> ] [ -h ]
 #-
 
+if [ "$( whoami )" != root ]; then
+    echo "Use me with sudo"
+    exit 1
+fi
+
 function _readlink(){
     c="$1"
     f=$( basename "$c" )
@@ -64,8 +69,10 @@ done
 
 CONFDIR="/usr/local/etc/dovecot"
 LIBEXECDIR="/usr/local/libexec/dovecot"
-maildir="/usr/local/var/mail/users"
 spooldir="/usr/local/var/mail/spool"
+maildir="/usr/local/var/mail/users"
+previousdir="/Library/Server/Mail/Data/mail/users"
+maildirmigratelog="${previousdir}/.migrate.log"
 fullpath_to_me="$( _readlink "$0" )"
 pathtome="$( dirname "$fullpath_to_me" )"
 OWNERID="$( stat -f "%u:%g" "$CONFDIR" )"
@@ -455,6 +462,24 @@ install_file "${CONFDIR}/sieve" "${WORKDIR}/default.sieve"
 
 chown -R "$OWNERID" "$CONFDIR"
 rm -rf "$WORKDIR"
+
+: Migrate privious maildirs.
+find "$previousdir" -type l | while read -r i
+do
+    userdirname="$( basename "$i" )"
+    d="$(_readlink "$i" )"
+    if [ -d "${maildir}/${userdirname}" ]; then
+        echo "[$( date "+%Y/%m/%d %H:%M:%S" )] Found maildir for $userdirname in both $previousdir and $maildir." | tee -a "$maildirmigratelog"
+        echo "Check them"
+    else
+        echo "[$( date "+%Y/%m/%d %H:%M:%S" )] Move previous maildir for $userdirname into $maildir." | tee -a "$maildirmigratelog"
+        userdir="$( basename "$d" )"
+        echo "[$( date "+%Y/%m/%d %H:%M:%S" )] $userdirname --> ../$userdir" >> "$maildirmigratelog"
+        echo mv "$d" "${maildir}/${userdirname}"
+        echo chown -R "${userdirname}:mail" "${maildir}/${userdirname}"
+        echo rm "$i"
+    fi
+done
 
 : Next step
 echo "To start/stop dovecot, use brew sub command."
