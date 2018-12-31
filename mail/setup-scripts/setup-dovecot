@@ -468,6 +468,7 @@ find "$previousdir" -type l | while read -r i
 do
     userdirname="$( basename "$i" )"
     d="$(_readlink "$i" )"
+    if [ ! -d "$d" ]; then continue; fi
     if [ -d "${maildir}/${userdirname}" ]; then
         echo "[$( date "+%Y/%m/%d %H:%M:%S" )] Found maildir for $userdirname in both $previousdir and $maildir." | tee -a "$maildirmigratelog"
         echo "Check them"
