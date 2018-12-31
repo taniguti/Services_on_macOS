@@ -62,15 +62,15 @@ do
     esac
 done
 
-fullpath_to_me=$( _readlink "$0" )
-pathtome=$( dirname "$fullpath_to_me" )
 CONFDIR="/usr/local/etc/dovecot"
 LIBEXECDIR="/usr/local/libexec/dovecot"
+maildir="/usr/local/var/mail/users"
+spooldir="/usr/local/var/mail/spool"
+fullpath_to_me="$( _readlink "$0" )"
+pathtome="$( dirname "$fullpath_to_me" )"
 OWNERID="$( stat -f "%u:%g" "$CONFDIR" )"
 WORKDIR="$( mktemp -d )"
 backupdate="$( date +%Y%m%d-%H%M%S )"
-maildir=/usr/local/var/mail/users
-spooldir="/usr/local/var/mail/spool"
 
 if [ -z "$mailservername" ]; then
     mailservername="$( hostname )"

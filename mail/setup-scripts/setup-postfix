@@ -48,12 +48,12 @@ do
     esac
 done
 
-fullpath_to_me=$( _readlink "$0" )
-pathtome=$( dirname "$fullpath_to_me" )
-launchdplist="${pathtome}/../LaunchDaemons/org.postfix.master.plist"
-confdir=$(/usr/libexec/PlistBuddy -c "print ProgramArguments:2" "$launchdplist")
 spooldir="/usr/local/var/mail/spool"
 datadir="/usr/local/var/mail/mta"
+fullpath_to_me="$( _readlink "$0" )"
+pathtome="$( dirname "$fullpath_to_me" )"
+launchdplist="${pathtome}/../LaunchDaemons/org.postfix.master.plist"
+confdir="$(/usr/libexec/PlistBuddy -c "print ProgramArguments:2" "$launchdplist")"
 backupdate=$(date +%Y%m%d-%H%M%S)
 if [ -z "$mailservername" ]; then
     mailservername="$( hostname )"
