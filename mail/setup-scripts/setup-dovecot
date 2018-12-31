@@ -467,17 +467,18 @@ rm -rf "$WORKDIR"
 find "$previousdir" -type l | while read -r i
 do
     userdirname="$( basename "$i" )"
+    username="$( id -un "$( basename "$i" )" )"
     d="$(_readlink "$i" )"
     if [ ! -d "$d" ]; then continue; fi
     if [ -d "${maildir}/${userdirname}" ]; then
-        echo "[$( date "+%Y/%m/%d %H:%M:%S" )] Found maildir for $userdirname in both $previousdir and $maildir." | tee -a "$maildirmigratelog"
+        echo "[$( date "+%Y/%m/%d %H:%M:%S" )] Found maildir: $userdirname for $username in both $previousdir and $maildir." | tee -a "$maildirmigratelog"
         echo "Check them"
     else
-        echo "[$( date "+%Y/%m/%d %H:%M:%S" )] Move previous maildir for $userdirname into $maildir." | tee -a "$maildirmigratelog"
+        echo "[$( date "+%Y/%m/%d %H:%M:%S" )] Move previous maildir: $userdirname for $username into $maildir." | tee -a "$maildirmigratelog"
         userdir="$( basename "$d" )"
-        echo "[$( date "+%Y/%m/%d %H:%M:%S" )] $userdirname --> ../$userdir" >> "$maildirmigratelog"
-        mv "$d" "${maildir}/${userdirname}"
-        chown -R "${userdirname}:mail" "${maildir}/${userdirname}"
+        echo "[$( date "+%Y/%m/%d %H:%M:%S" )] $username: $userdirname --> ../$userdir" >> "$maildirmigratelog"
+        mv "$d" "${maildir}/${username}"
+        chown -R "${userdirname}:mail" "${maildir}/${username}"
         rm "$i"
     fi
 done
