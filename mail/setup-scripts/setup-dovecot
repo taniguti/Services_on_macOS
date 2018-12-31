@@ -89,7 +89,7 @@ else
 fi
 
 DHPARAM=/usr/local/var/db/dovecot/dh.pem
-if [ ! -f "$DHPARAM" ]; then
+if [ ! -s "$DHPARAM" ]; then
     mkdir -p "$( dirname "$DHPARAM" )"
     : Create $DHPARAM
     openssl dhparam 4096 > "$DHPARAM"
