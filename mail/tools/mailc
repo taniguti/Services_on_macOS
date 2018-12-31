@@ -6,6 +6,8 @@
 #-
 
 postfixplist=/Library/LaunchDaemons/org.postfix.master.plist
+cmd="$(echo "$1" | tr "[:upper:]" "[:lower:]" )"
+target="$(echo "$2" | tr "[:upper:]" "[:lower:]" )"
 
 if [ "$( whoami )" != root ]; then
     echo "Use me with sudo"
@@ -17,17 +19,32 @@ if [ ! -f "$postfixplist" ]; then
     exit 1
 fi
 
-cmd="$(echo "$1" | tr "[:upper:]" "[:lower:]" )"
-target="$(echo "$2" | tr "[:upper:]" "[:lower:]" )"
+function get-postfixstatus(){
+    status="$( launchctl print system/org.postfix.master 2> /dev/null | grep state | awk '{print $NF}')"
+    echo "postfix       ${status:-stopped}"
+}
+
+function statuscmd(){
+    if [ "$1" = postfix ]; then
+        get-postfixstatus
+    elif [ "$1" = dovecot ]; then
+        brew services list | awk '$1 == "dovecot"'
+    else
+        get-postfixstatus
+        brew services list | awk '$1 == "dovecot"'
+    fi
+}
 
 function startcmd(){
     if [ "$1" = postfix ]; then
         launchctl load -Fw "$postfixplist"
+        get-postfixstatus
     elif [ "$1" = dovecot ]; then
         brew services start dovecot
     else
         echo "Start postfix"
         launchctl load -Fw "$postfixplist"
+        get-postfixstatus
         echo "Start dovecot"
         brew services start dovecot
     fi
@@ -35,12 +52,14 @@ function startcmd(){
 
 function stopcmd(){
     if [ "$1" = postfix ]; then
-        launchctl load -Fw "$postfixplist"
+        launchctl unload -Fw "$postfixplist"
+        get-postfixstatus
     elif [ "$1" = dovecot ]; then
         brew services stop dovecot
     else
         echo "Stop postfix"
         launchctl unload -Fw "$postfixplist"
+        get-postfixstatus
         echo "Stop dovecot"
         brew services stop dovecot
     fi
@@ -49,15 +68,6 @@ function stopcmd(){
 function restartcmd(){
     stopcmd "$1"
     startcmd "$1"
-}
-
-function statuscmd(){
-    if [ "$1" = postfix ]; then
-    elif [ "$1" = dovecot ]; then
-        brew services status dovecot
-    else
-        brew services status dovecot
-    fi
 }
 
 case "${target:=all}" in
