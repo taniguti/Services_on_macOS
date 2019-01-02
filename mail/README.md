@@ -11,6 +11,14 @@
 - Migrate mail user directories of macOS Server 5.6 while setting up.
 - Simple mail service command, `mailc` will be installed (create a symlink) into `/usr/local/sbin`.
 
+```
+$ sudo /usr/local/sbin/mailc help
+
+mailc - mail service control command
+
+ mailc [start|stop|restart|status] [postfix|dovecot|all]
+```
+
 ## Restrictions
 - pop3 will not set up intentionlly.
 - Active Directory users are not available.
