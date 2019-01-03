@@ -23,6 +23,8 @@ mailc - mail service control command
 - pop3 will not set up intentionlly.
 - Active Directory users are not available.
 - CalmAV and SpamAssasion is not included.
+- Password method is only plain but expect to use it with SSL.
+- No notification.
 
 ## How to setup
 1. Install dovecot with [Homebrew](https://brew.sh).
