@@ -1,12 +1,14 @@
 #!/bin/bash
 
-mode=$1
+mode="$1"
 case ${mode:=stream} in
     stream)
-        : mode=stream
+        mode=stream
         ;;
     show)
-        : mode=show
+        mode=show
+        startdate="--start $( date +%F )"
+        enddate="--end $( date +%F )"
         ;;
     *)
         echo "$0 show|stream"
@@ -14,4 +16,5 @@ case ${mode:=stream} in
         ;;
 esac
 
-sudo log $mode --predicate  '(process == "smtpd") || (process == "smtp")' --info 
+sudo log "$mode" --style syslog --info \
+    --predicate '(processImagePath contains "smtp") || (processImagePath contains "qmgr") || (processImagePath contains "pickup") || (processImagePath contains "cleanup") || (processImagePath contains "trivial-rewrite")'

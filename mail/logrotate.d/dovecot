@@ -1,0 +1,14 @@
+/var/log//usr/local/var/log/dovecot/dovecot.log
+/var/log//usr/local/var/log/dovecot/mail-debug.log
+/var/log//usr/local/var/log/dovecot/mail-err.log
+/var/log//usr/local/var/log/dovecot/mail-info.log
+{
+    missingok
+ 　 notifempty
+ 　 weekly
+    delaycompress
+ 　 rotate 12 　　
+    postrotate
+ 　     doveadm log reopen
+ 　 endscript
+}
