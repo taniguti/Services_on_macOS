@@ -1,6 +1,6 @@
 # Mail Service for macOS Mojave or later.
 
-## Fetatures
+## Features
 - Use postfix which is built-in mac OS.
 - Use dovecot which is installed via [Homebrew](https://brew.sh).
 - SMTP Auth with dovecot
