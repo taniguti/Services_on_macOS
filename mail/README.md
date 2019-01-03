@@ -1,12 +1,12 @@
 # Mail Service for macOS Mojave or later.
 
 ## Features
-- Use postfix which is built-in mac OS.
-- Use dovecot which is installed via [Homebrew](https://brew.sh).
+- Uses postfix which is built-in mac OS.
+- Uses dovecot which is installed via [Homebrew](https://brew.sh).
 - SMTP Auth with dovecot
 - SMTP over ssl
 - IMAP over ssl
-- Use Let's Encrypt certificates automatically if they are installed.
+- Uses Let's Encrypt certificates automatically if they are installed.
 - Both local directory users and Open Directory users are available.
 - Migrate mail user directories of macOS Server 5.6 while setting up.
 - Simple mail service command, `mailc` will be installed (create a symlink) into `/usr/local/sbin`.
@@ -46,6 +46,11 @@ doveconf -n
 ```
 sudo /usr/local/sbin/mailc start
 ```
+
+## Tested conditions
+- macOS 10.13 with Server 5.6.
+- macOS 10.4
+- Mail.app of macOS 10.14 and iOS 12.
 
 ## Log rotation
 You will find logrotate configuration file for dovecot in logrotate.d directory.
