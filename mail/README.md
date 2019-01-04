@@ -28,24 +28,24 @@ mailc - mail service control command
 
 ## How to setup
 1. Install dovecot with [Homebrew](https://brew.sh).
-```
-brew install dovecot --with-pigeonhole --with-pam
-```
+
+    brew install dovecot --with-pigeonhole --with-pam
+
 1. Clone this repo into `/usr/local/share` or where you like.
 1. Move to `Services_on_macOS/mail/setup-scripts`
 1. Type setup script. **It will take so long time to create a dhparam file.**
-```
-./install-mail-service.
-```
+
+    ./install-mail-service.
+
 1. You can check configurtion files before starting service. So mail service won't start automatically at that time.You can edit configuration files if there are anything you want to add.
-```
-postconf -c /usr/local/etc/postfix
-doveconf -n
-```
+
+    postconf -c /usr/local/etc/postfix
+    doveconf -n
+
 1. Start mail service.
-```
-sudo /usr/local/sbin/mailc start
-```
+
+    sudo /usr/local/sbin/mailc start
+
 
 ## Tested conditions
 - macOS 10.13 with Server 5.6.
