@@ -1,0 +1,123 @@
+#!/bin/bash
+#-
+#- install-mail-service
+#-  -C path to CA-CERT
+#-  -K path to Server Certificate private key
+#-  -S path to Server Certificate file
+#-  -H name of mail server
+#-  -h : show this message.
+#-
+#- But if your server has certificates of let's encrypt,
+#- This script will use it automatically.
+#- So you just type like this;
+#-
+#-  ./install-mail-service
+#-
+#- ## DO NOT USE with sudo or as root.
+#- ## Required to install dovecot via homebrew.
+#- ##
+#- ## brew install dovecot --with-pigeonhole --with-pam
+#-
+
+function _readlink(){
+    c="$1"
+    f="$( basename "$c" )"
+    if [ "$( type -a "$c" 2> /dev/null | head -1 )"x = x ]; then
+        d="$( cd "$(dirname "$c")" || exit 1; pwd )"
+    else
+        p="$( type -a "$c" | head -1 | awk '{$1="";$2=""; print $0}'| sed 's/^[ \t]*//' )"
+        d="$( cd "$(dirname "$p")" || exit 1; pwd )"
+    fi
+    if [ -L "${d}/${f}" ]; then
+        cd "${d}" || exit 1
+        r="$( readlink -n "${d}/${f}" )"
+        _readlink "$r"
+    else
+        echo "${d}/${f}"
+    fi
+}
+
+fullpath_to_me="$( _readlink "$0" )"
+pathtome="$( dirname "$fullpath_to_me" )"
+if [ "$( whoami )" = root ]; then
+    echo "Do not call me with sudo"
+    echo "Use an user who has administrator right."
+    exit 1
+fi
+
+while getopts C:H:K:S:h sw
+do
+    case "$sw" in
+        C )
+            tlsca="$OPTARG"
+            ;;
+        K )
+            tlskey="$OPTARG"
+            ;;
+        S )
+            tlscert="$OPTARG"
+            ;;
+        H )
+            mailservername="$OPTARG"
+            ;;
+        * )
+            grep ^#- "$0" | cut -c 4-
+            exit 0
+            ;;
+    esac
+done
+
+if [ -z "$mailservername" ]; then
+    mailservername="$( hostname )"
+fi
+
+# tls
+if [ -f "$tlsca" ] && [ -f "$tlscert" ] && [ -f "$tlskey" ]; then
+   tls_enabled=yes
+else
+    if [ -f "/etc/letsencrypt/live/${mailservername}/cert.pem" ] && \
+       [ -f "/etc/letsencrypt/live/${mailservername}/fullchain.pem" ] && \
+       [ -f "/etc/letsencrypt/live/${mailservername}/privkey.pem" ] ; then
+        tlscert="/etc/letsencrypt/live/${mailservername}/cert.pem"
+        tlsca="/etc/letsencrypt/live/${mailservername}/fullchain.pem"
+        tlskey="/etc/letsencrypt/live/${mailservername}/privkey.pem"
+        echo "Found Let's Encrypt certificate. Use it."
+        chmod 755 /etc/letsencrypt/{archive,live}
+        tls_enabled=yes
+    fi
+fi
+if [ "${tls_enabled:-no}" = yes ]; then
+    tlsoptions="-C $tlsca -S $tlscert -K $tlskey"
+fi
+
+# dovecot
+IsDovecot="$( brew info dovecot | grep "Not installed" )"
+if [ "$IsDovecot" = "Not installed" ]; then
+    cat << _MSG
+install with homebrew
+    brew install dovecot --with-pigeonhole --with-pam
+_MSG
+    exit 1
+fi
+
+# dovecot setup
+eval sudo "${pathtome}/setup-dovecot" -H "$mailservername" "$tlsoptions"
+
+# postfix setup
+eval sudo "${pathtome}/setup-postfix" -H "$mailservername" "$tlsoptions"
+
+# install mailc
+sudo mkdir -p /usr/local/sbin/
+sudo ln -fhs "$( _readlink "${pathtome}/../tools/mailc" )" /usr/local/sbin/
+
+: Next Steps
+cat <<_MSG
+To check configuration,
+    for postfix, type
+        postconf -c /usr/local/etc/postfix
+    for dovecot, type
+        dovecont -n
+
+To start mail service, type
+    sudo /usr/local/sbin/mailc start
+_MSG

@@ -1,0 +1,197 @@
+#!/bin/bash
+#-
+#- Set up postfix on macOS
+#- Usage:
+#-     Use with sudo.
+#-
+#-     setup-postfix [ -C /path/to/CA-chain.pem -S /path/to/server-cert.pem -K /path/to/cert-key.pem ]
+#-          [ -H <mail server fqdn> ] [ -h ]
+#-
+
+if [ "$( whoami )" != root ]; then
+    echo "Use me with sudo"
+    exit 1
+fi
+
+function _readlink(){
+    c="$1"
+    f=$( basename "$c" )
+    if [ "$( type -a "$c" 2> /dev/null | head -1 )x" = x ]; then
+        d="$( cd "$(dirname "$c")"|| exit 1 ; pwd )"
+    else
+        p="$( type -a "$c" | head -1 | awk '{$1="";$2=""; print $0}' | sed 's/^[ \t]*//' )"
+        d="$( cd "$(dirname "$p")" || exit 1 ; pwd )"
+    fi
+    if [ -L "${d}/${f}" ]; then
+        cd "${d}" || exit 1
+        r="$( readlink -n "${d}/${f}" )"
+        _readlink "$r"
+    else
+        echo "${d}/${f}"
+    fi
+}
+
+while getopts C:H:K:S:h sw
+do
+    case "$sw" in
+        C )
+            tlsca="$OPTARG"
+            ;;
+        K )
+            tlskey="$OPTARG"
+            ;;
+        S )
+            tlscert="$OPTARG"
+            ;;
+        H )
+            mailservername="$OPTARG"
+            ;;
+        * )
+            grep ^#- "$0" | cut -c 4-
+            exit 0
+            ;;
+    esac
+done
+
+spooldir="/usr/local/var/mail/spool"
+datadir="/usr/local/var/mail/mta"
+fullpath_to_me="$( _readlink "$0" )"
+pathtome="$( dirname "$fullpath_to_me" )"
+launchdplist="${pathtome}/../LaunchDaemons/org.postfix.master.plist"
+confdir="$(/usr/libexec/PlistBuddy -c "print ProgramArguments:2" "$launchdplist")"
+backupdate=$(date +%Y%m%d-%H%M%S)
+if [ -z "$mailservername" ]; then
+    mailservername="$( hostname )"
+fi
+if [ -f "$tlsca" ] && [ -f "$tlscert" ] && [ -f "$tlskey" ]; then
+   tls_enabled=yes
+else
+   tls_enabled=no
+fi
+
+: Prepare and convert config files
+: main.cf
+mkdir -p "$confdir" "$spooldir" "$datadir"
+chown _postfix:mail "$datadir"
+if [ -d /Library/Server/Mail/Config/postfix ]; then
+    cp -an /Library/Server/Mail/Config/postfix/* "$confdir" > /dev/null
+else
+    cp -an /etc/postfix/* "$confdir" > /dev/null
+fi
+
+: main.cf
+touch "${confdir}"/{white-list.txt,black-list.txt,reject-list.txt}
+postconf -c "$confdir" -e "myhostname = $mailservername"
+postconf -c "$confdir" -e "mydomain = $(echo "$mailservername" | awk -F. '{OFS=".";$1=""}1' | sed 's/^\.//')"
+postconf -c "$confdir" -e "alias_database = hash:${confdir}/aliases"
+postconf -c "$confdir" -e "alias_maps = hash:${confdir}/aliases"
+postconf -c "$confdir" -e "command_directory = /usr/sbin"
+postconf -c "$confdir" -e "daemon_directory = /usr/libexec/postfix"
+postconf -c "$confdir" -e "header_checks = pcre:${confdir}/custom_header_checks"
+postconf -c "$confdir" -e "html_directory = /usr/share/doc/postfix/html"
+postconf -c "$confdir" -e "inet_interfaces = all"
+postconf -c "$confdir" -e "mailbox_transport = lmtp:unix:private/dovecot-lmtp"
+postconf -c "$confdir" -e "manpage_directory = /usr/share/man"
+postconf -c "$confdir" -e "newaliases_path = /usr/bin/newaliases"
+postconf -c "$confdir" -e "queue_directory = $spooldir"
+postconf -c "$confdir" -e "data_directory = $datadir"
+postconf -c "$confdir" -e "readme_directory = /usr/share/doc/postfix"
+postconf -c "$confdir" -e "recipient_canonical_maps = hash:${confdir}/system_user_maps"
+postconf -c "$confdir" -e "sample_directory = /usr/share/doc/postfix/examples"
+postconf -c "$confdir" -e "sendmail_path = /usr/sbin/sendmail"
+postconf -c "$confdir" -e "smtpd_recipient_restrictions = permit_sasl_authenticated permit_mynetworks reject_unauth_destination permit"
+postconf -c "$confdir" -e "smtpd_relay_restrictions = permit_mynetworks, permit_sasl_authenticated, reject_unauth_destination"
+postconf -c "$confdir" -e "smtpd_sasl_type = dovecot"
+postconf -c "$confdir" -e "smtpd_sasl_path = private/auth"
+postconf -c "$confdir" -e "smtpd_sasl_auth_enable = yes"
+postconf -c "$confdir" -e "smtpd_sasl_local_domain = $mailservername"
+postconf -c "$confdir" -e "smtpd_sender_restrictions = permit_mynetworks, check_client_access regexp:${confdir}/white-list.txt, check_client_access regexp:${confdir}/black-list.txt, check_client_access regexp:${confdir}/reject-list.txt"
+postconf -c "$confdir" -e "virtual_alias_domains = hash:${confdir}/virtual_domains"
+postconf -c "$confdir" -e "virtual_alias_maps = hash:${confdir}/virtual_users"
+postconf -# -c "$confdir" "alternate_config_directories"
+postconf -# -c "$confdir" "dovecot_destination_recipient_limit"
+postconf -# -c "$confdir" "smtpd_use_pw_server"
+postconf -# -c "$confdir" "enable_server_options"
+postconf -# -c "$confdir" "smtpd_pw_server_security_options"
+postconf -# -c "$confdir" "mydomain_fallback"
+postconf -# -c "$confdir" "config_directory"
+postconf -# -c "$confdir" "content_filter"
+postconf -# -c "$confdir" "imap_submit_cred_file"
+postconf -# -c "$confdir" "mailq_path"
+postconf -# -c "$confdir" "smtpd_require_virtual_map"
+postconf -# -c "$confdir" "use_sacl_cache"
+
+if [ "$tls_enabled" = yes ]; then
+    postconf -c "$confdir" -e "smtp_tls_CAfile = $tlsca"
+    postconf -c "$confdir" -e "smtp_tls_cert_file = $tlscert"
+    postconf -c "$confdir" -e "smtp_tls_key_file = $tlskey"
+    postconf -c "$confdir" -e "smtpd_tls_CAfile = $tlsca"
+    postconf -c "$confdir" -e "smtpd_tls_cert_file = $tlscert"
+    postconf -c "$confdir" -e "smtpd_tls_key_file = $tlskey"
+else
+    postconf -# -c "$confdir" "smtp_tls_CAfile"
+    postconf -# -c "$confdir" "smtp_tls_cert_file"
+    postconf -# -c "$confdir" "smtp_tls_key_file"
+    postconf -# -c "$confdir" "smtpd_tls_CAfile"
+    postconf -# -c "$confdir" "smtpd_tls_cert_file"
+    postconf -# -c "$confdir" "smtpd_tls_key_file"
+fi
+
+: master.cf
+# https://www.mind-it.info/2014/02/20/change-postfix-master-cf-postconf/
+# http://www.postfix.org/wip.html
+postconf -M -c "$confdir" pickup/fifo="pickup fifo n - n 60 1 pickup"
+postconf -P -c "$confdir" "pickup/fifo/content_filter="
+postconf -M# -c "$confdir" "dovecot/unix"
+
+if [ -x "/usr/libexec/postfix/greylist.pl" ]; then
+    postconf -M -c "$confdir" policy/unix="policy unix - n n - - spawn user=nobody:mail argv=/usr/bin/perl /usr/libexec/postfix/greylist.pl"
+else
+    postconf -M# -c "$confdir" "policy/unix"
+fi
+postconf -M# -c "$confdir" "smtp-amavis/unix"
+postconf -M# -c "$confdir" "127.0.0.1:10025/inet"
+
+: Prepare spool directories
+mkdir -p  "${spooldir}"/{active,bounce,corrupt,defer,deferred,flush,hold,incoming,maildrop,pid,private,public,saved,trace}
+chmod 700 "${spooldir}"/{active,bounce,corrupt,defer,deferred,flush,hold,incoming,private,saved,trace}
+chmod 730 "${spooldir}/maildrop"
+chmod 755 "${spooldir}/pid"
+chmod 710 "${spooldir}/public"
+chown _postfix:wheel "${spooldir}"/{active,bounce,corrupt,defer,deferred,flush,hold,incoming,private,saved,trace}
+chown _postfix:_postdrop "${spooldir}"/{maildrop,public}
+chown root:wheel "${spooldir}/pid"
+
+: fix owner
+if [ -f "${datadir}/guid_device_maps.plist" ]; then
+    chown _postfix:mail "${datadir}/guid_device_maps.plist"
+fi
+
+: Rebuild DBs
+rm -f "${confdir}/aliases.db"
+postalias -c "$confdir" "${confdir}/aliases"
+for mapfile in "${confdir}/system_user_maps" "${confdir}/virtual_domains" "${confdir}/virtual_users" "${confdir}/rbl_whitelist"
+do
+    rm -f "${mapfile}.db"
+    if [ -f "$mapfile" ]; then
+        postmap -c "$confdir" "$mapfile"
+    fi
+done
+
+: Prepare Launchd.plist
+postfixPlist="/Library/LaunchDaemons/$( basename "$launchdplist" )"
+if [ -f "$postfixPlist" ]; then
+    if [ "$( md5 -q "$postfixPlist" )" != "$( md5 -q "$launchdplist" )" ]; then
+        mv "${postfixPlist}"{,."$backupdate"}
+        cp "$launchdplist" "$postfixPlist"
+    fi
+else
+    cp "$launchdplist" "$postfixPlist"
+fi
+chown 0:0 "$postfixPlist"
+chmod 644 "$postfixPlist"
+
+postfix -c "$confdir" check ; r=$?
+if [ "$r" -eq 0 ]; then configcheck=OK ;fi
+echo "postfix setup: done.[configcheck: ${configcheck:-NG}]"
+exit "$r"

@@ -1,0 +1,106 @@
+#!/bin/bash
+#-
+#- mailc - mail service control command
+#-
+#-  mailc [start|stop|restart|status] [postfix|dovecot|all]
+#-
+
+postfixplist=/Library/LaunchDaemons/org.postfix.master.plist
+cmd="$(echo "$1" | tr "[:upper:]" "[:lower:]" )"
+target="$(echo "$2" | tr "[:upper:]" "[:lower:]" )"
+
+if [ "$( whoami )" != root ]; then
+    echo "Use me with sudo"
+    exit 1
+fi
+
+if [ ! -f "$postfixplist" ]; then
+    echo "Mail service is not set up as expected."
+    exit 1
+fi
+
+function get-postfixstatus(){
+    status="$( launchctl print system/org.postfix.master 2> /dev/null | grep state | awk '{print $NF}')"
+    echo "postfix       ${status:-stopped}"
+}
+
+function statuscmd(){
+    if [ "$1" = postfix ]; then
+        get-postfixstatus
+    elif [ "$1" = dovecot ]; then
+        brew services list | awk '$1 == "dovecot"'
+    else
+        get-postfixstatus
+        brew services list | awk '$1 == "dovecot"'
+    fi
+}
+
+function startcmd(){
+    if [ "$1" = postfix ]; then
+        launchctl load -Fw "$postfixplist"
+        get-postfixstatus
+    elif [ "$1" = dovecot ]; then
+        brew services start dovecot
+    else
+        echo "Start postfix"
+        launchctl load -Fw "$postfixplist"
+        get-postfixstatus
+        echo "Start dovecot"
+        brew services start dovecot
+    fi
+}
+
+function stopcmd(){
+    if [ "$1" = postfix ]; then
+        launchctl unload -Fw "$postfixplist"
+        get-postfixstatus
+    elif [ "$1" = dovecot ]; then
+        brew services stop dovecot
+    else
+        echo "Stop postfix"
+        launchctl unload -Fw "$postfixplist"
+        get-postfixstatus
+        echo "Stop dovecot"
+        brew services stop dovecot
+    fi
+}
+
+function restartcmd(){
+    stopcmd "$1"
+    startcmd "$1"
+}
+
+case "${target:=all}" in
+    postfix )
+        : ok
+    ;;
+    dovecot )
+        : ok
+    ;;
+    all )
+        : ok
+    ;;
+    *)
+        grep ^#- "$0" | cut -c 4-
+        exit 1
+    ;;
+esac
+
+case "${cmd:-x}" in
+    start )
+        startcmd $target
+    ;;
+    stop )
+        stopcmd $target
+    ;;
+    restart )
+        restartcmd $target
+    ;;
+    status )
+        statuscmd $target
+    ;;
+    *)
+        grep ^#- "$0" | cut -c 4-
+        exit 1
+    ;;
+esac
