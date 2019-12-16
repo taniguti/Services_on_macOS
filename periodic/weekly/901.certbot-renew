@@ -11,7 +11,11 @@ fi
 
 case "${certbot_renew:-NO}" in
     [Yy][Ee][Ss])
-        /usr/local/bin/certbot renew 2>&1
+        if [ -x  /usr/local/sbin/mailc ]; then
+            /usr/local/bin/certbot renew --post-hook "/usr/local/sbin/mailc restart all" 2>&1
+        else
+            /usr/local/bin/certbot renew 2>&1
+        fi
 		rc=$?
 		;;
 	*)
