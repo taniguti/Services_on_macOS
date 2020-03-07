@@ -11,12 +11,22 @@ fi
 
 case "${certbot_renew:-NO}" in
     [Yy][Ee][Ss])
-        /usr/local/bin/certbot renew 2>&1
+        postscript="/tmp/$(uuidgen)"
+        echo '#!/bin/bash'           > "$postscript"
+        echo ': do post-hook script' >> "$postscript"
+        chmod 755 "$postscript"
+        if [ -x  /usr/local/sbin/mailc ]; then
+            echo "/usr/local/sbin/mailc restart all" >> "$postscript"
+        fi
+        if [ -x /usr/local/sbin/import_letsencrypt_into_system_keychain ]; then
+            echo "/usr/local/sbin/import_letsencrypt_into_system_keychain" >> "$postscript"
+        fi
+        /usr/local/bin/certbot renew --post-hook "$postscript" 2>&1
         rc=$?
-        ;;
+		;;
     *)
         rc=0
-        ;;
+		;;
 esac
 
 exit $rc

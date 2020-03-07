@@ -1,0 +1,82 @@
+#!/bin/bash
+
+Shlogger(){
+    local logfile scriptname timestamp label mode
+    scriptname="$( /usr/bin/basename "$0" )"
+    timestamp="$( /bin/date "+%F %T" )"
+    logfile="/tmp/${scriptname}.log"
+    mode="$2"
+    case "${mode:-1}" in
+        2 )
+            label="[error]"
+            echo "$timestamp $scriptname $label $1" | /usr/bin/tee -a "$logfile" >&2
+            ;;
+        * )
+            label="[info]"
+            echo "$timestamp $scriptname $label $1" | /usr/bin/tee -a "$logfile"
+            ;;
+    esac
+}
+
+if [ "$( whoami )" != root ]; then
+    Shlogger "Use me with sudo." 2
+    exit 1
+fi
+
+MYDOMAIN="$( hostname )"
+PRIVATEKEY="/etc/letsencrypt/live/${MYDOMAIN}/privkey.pem"
+CERTPEM="/etc/letsencrypt/live/${MYDOMAIN}/cert.pem"
+FULLCHAINPEM="/etc/letsencrypt/live/${MYDOMAIN}/fullchain.pem"
+OUTPUTDIR="$( mktemp -d )"
+P12_FILE="${OUTPUTDIR}/letsencrypt_sslcert.p12"
+SERVERADMIND="/Applications/Server.app/Contents/ServerRoot/System/Library/CoreServices/ServerManagerDaemon.bundle/Contents/MacOS/servermgrd"
+
+# Check files
+if [ -x "$SERVERADMIND" ]; then
+    Shlogger "Found: $i{SERVERADMIND}"
+else
+    Shlogger "Not found: ${SERVERADMIND}" 2
+    exit 1
+fi
+for F in "$PRIVATEKEY" "$CERTPEM" "$FULLCHAINPEM"
+do
+    if [ -h  "${F}" ]; then
+        Shlogger "Found: ${F}"
+    else
+        Shlogger "Not found: ${F}" 2
+        exit 1
+    fi
+done
+
+# Generate a passphrase
+PASS=$(openssl rand -base64 45 | tr -d /=+ | cut -c -30)
+
+# Transform the pem files into a OS X Valid p12 file
+openssl pkcs12 -export -inkey "${PRIVATEKEY}" \
+                -in "${CERTPEM}" \
+                -certfile "${FULLCHAINPEM}" \
+                -out "${P12_FILE}" \
+                -passout pass:$PASS
+
+if [ -s "${P12_FILE}" ]; then
+    Shlogger "Got $P12_FILE"
+else
+    Shlogger "Failed to get $P12_FILE" 2
+    exit 1
+fi
+
+# import the p12 file in keychain
+security import "${P12_FILE}" \
+                -f pkcs12 \
+                -k /Library/Keychains/System.keychain \
+                -P $PASS \
+                -T "$SERVERADMIND"
+
+impoet_result="$?"
+if [ "$impoet_result" -eq 0 ]; then
+    Shlogger "$P12_FILE is imported."
+else
+    Shlogger "Failed to import $P12_FILE due to code: $impoet_result"
+fi
+rm -f "$P12_FILE"
+Shlogger "$P12_FILE is deleted."
