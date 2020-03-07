@@ -14,7 +14,7 @@ case "${certbot_renew:-NO}" in
         postscript="/tmp/$(uuidgen)"
         echo '#!/bin/bash'           > "$postscript"
         echo ': do post-hook script' >> "$postscript"
-       chmod 755 "$postscript"
+        chmod 755 "$postscript"
         if [ -x  /usr/local/sbin/mailc ]; then
             echo "/usr/local/sbin/mailc restart all" >> "$postscript"
         fi
