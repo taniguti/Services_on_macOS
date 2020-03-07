@@ -45,7 +45,7 @@ done
 # Generate a passphrase
 PASS=$(openssl rand -base64 45 | tr -d /=+ | cut -c -30)
 
-# Transform the pem files into a OS X Valid p12 file - UNCOMMENT THE NEXT LINE AFTER THE TEST RUN WORKED
+# Transform the pem files into a OS X Valid p12 file
 openssl pkcs12 -export -inkey "${PRIVATEKEY}" \
                 -in "${CERTPEM}" \
                 -certfile "${FULLCHAINPEM}" \
@@ -59,7 +59,7 @@ else
     exit 1
 fi
 
-# import the p12 file in keychain - UNCOMMENT THE NEXT LINE AFTER THE TEST RUN WORKED
+# import the p12 file in keychain
 security import "${P12_FILE}" \
                 -f pkcs12 \
                 -k /Library/Keychains/System.keychain \
