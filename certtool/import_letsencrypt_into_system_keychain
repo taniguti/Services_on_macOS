@@ -32,7 +32,11 @@ P12_FILE="${OUTPUTDIR}/letsencrypt_sslcert.p12"
 SERVERADMIND="/Applications/Server.app/Contents/ServerRoot/System/Library/CoreServices/ServerManagerDaemon.bundle/Contents/MacOS/servermgrd"
 
 # Check files
-for F in "$PRIVATEKEY" "$CERTPEM" "$FULLCHAINPEM" "$SERVERADMIND"
+if [ -x "$SERVERADMIND" ]; then
+    Shlogger "Not found: ${SERVERADMIND}" 2
+    exit 1
+fi
+for F in "$PRIVATEKEY" "$CERTPEM" "$FULLCHAINPEM"
 do
     if [ -h  "${F}" ]; then
         Shlogger "Found: ${F}"
