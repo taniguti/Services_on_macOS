@@ -33,6 +33,8 @@ SERVERADMIND="/Applications/Server.app/Contents/ServerRoot/System/Library/CoreSe
 
 # Check files
 if [ -x "$SERVERADMIND" ]; then
+    Shlogger "Found: $i{SERVERADMIND}"
+else
     Shlogger "Not found: ${SERVERADMIND}" 2
     exit 1
 fi
