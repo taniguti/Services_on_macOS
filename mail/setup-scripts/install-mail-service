@@ -16,7 +16,7 @@
 #- ## DO NOT USE with sudo or as root.
 #- ## Required to install dovecot via homebrew.
 #- ##
-#- ## brew install dovecot --with-pigeonhole --with-pam
+#- ## brew install dovecot
 #-
 
 function _readlink(){
