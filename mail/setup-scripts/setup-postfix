@@ -83,6 +83,7 @@ fi
 touch "${confdir}"/{white-list.txt,black-list.txt,reject-list.txt}
 postconf -c "$confdir" -e "myhostname = $mailservername"
 postconf -c "$confdir" -e "mydomain = $(echo "$mailservername" | awk -F. '{OFS=".";$1=""}1' | sed 's/^\.//')"
+postconf -c "$confdir" -e "mydestination = \$myhostname, localhost.\$mydomain, localhost, \$mydomain"
 postconf -c "$confdir" -e "alias_database = hash:${confdir}/aliases"
 postconf -c "$confdir" -e "alias_maps = hash:${confdir}/aliases"
 postconf -c "$confdir" -e "command_directory = /usr/sbin"
