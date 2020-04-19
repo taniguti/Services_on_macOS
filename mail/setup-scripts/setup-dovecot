@@ -459,6 +459,7 @@ if header :contains "X-Spam" "yes" {
 }
 _DEFAULT.SIEVE
 install_file "${CONFDIR}/sieve" "${WORKDIR}/default.sieve"
+/usr/local/bin/sievec -c "$CONFDIR" "${WORKDIR}/default.sieve"
 
 chown -R "$OWNERID" "$CONFDIR"
 rm -rf "$WORKDIR"
