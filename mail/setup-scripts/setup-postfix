@@ -172,12 +172,12 @@ fi
 : Rebuild DBs
 rm -f "${confdir}/aliases.db"
 postalias -c "$confdir" "${confdir}/aliases"
+
 for mapfile in "${confdir}/system_user_maps" "${confdir}/virtual_domains" "${confdir}/virtual_users" "${confdir}/rbl_whitelist"
 do
     rm -f "${mapfile}.db"
-    if [ -f "$mapfile" ]; then
-        postmap -c "$confdir" "$mapfile"
-    fi
+    touch "$mapfile"
+    postmap -c "$confdir" "$mapfile"
 done
 
 : Prepare Launchd.plist
