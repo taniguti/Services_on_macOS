@@ -16,7 +16,9 @@
 	<false/>
 	<key>ProcessType</key>
 	<string>Background</string>
-	<key>OnDemand</key>
-	<false/>
+        <key>KeepAlive</key>
+        <true/>
+        <key>RunAtLoad</key>
+        <true/>
 </dict>
 </plist>
