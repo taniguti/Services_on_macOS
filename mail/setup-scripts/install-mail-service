@@ -86,9 +86,6 @@ else
         tls_enabled=yes
     fi
 fi
-if [ "${tls_enabled:-no}" = yes ]; then
-    tlsoptions="-C $tlsca -S $tlscert -K $tlskey"
-fi
 
 # dovecot
 IsDovecot="$( brew info dovecot | grep "Not installed" )"
@@ -100,11 +97,14 @@ _MSG
     exit 1
 fi
 
-# dovecot setup
-eval sudo "${pathtome}/setup-dovecot" -H "$mailservername" "$tlsoptions"
-
-# postfix setup
-eval sudo "${pathtome}/setup-postfix" -H "$mailservername" "$tlsoptions"
+# Exec sub setup command.
+if [ "${tls_enabled:-no}" = yes ]; then
+    sudo "${pathtome}/setup-dovecot" -H "$mailservername" -C "$tlsca" -S "$tlscert" -K "$tlskey"
+    sudo "${pathtome}/setup-postfix" -H "$mailservername" -C "$tlsca" -S "$tlscert" -K "$tlskey"
+else
+    sudo "${pathtome}/setup-dovecot" -H "$mailservername"
+    sudo "${pathtome}/setup-postfix" -H "$mailservername"
+fi
 
 # install mailc
 sudo mkdir -p /usr/local/sbin/
