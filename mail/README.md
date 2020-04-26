@@ -46,15 +46,18 @@ mailc - mail service control command
 
     sudo /usr/local/sbin/mailc start
 
-
 ## Tested conditions
 - macOS 10.13 with Server 5.6.
 - macOS 10.4
 - Mail.app of macOs 10.13, macOS 10.14 and iOS 12.
+- macOS 10.15
 
 ## Log rotation
 You will find logrotate configuration file for dovecot in logrotate.d directory.
 If you use logrotate on your server, put the file into /usr/local/etc/logrotate.d then restart logrotate.
+
+# After up to 10.15
+postfix won't start. try to type 'sudo postfix start' once.
 
 ## References
 - [dovecot](https://www.dovecot.org/index.html)
