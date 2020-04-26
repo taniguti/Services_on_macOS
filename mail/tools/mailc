@@ -5,6 +5,7 @@
 #-  mailc [start|stop|restart|status] [postfix|dovecot|all]
 #-
 
+PATH=$PATH:/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin
 postfixplist=/Library/LaunchDaemons/org.postfix.master.plist
 cmd="$(echo "$1" | tr "[:upper:]" "[:lower:]" )"
 target="$(echo "$2" | tr "[:upper:]" "[:lower:]" )"
