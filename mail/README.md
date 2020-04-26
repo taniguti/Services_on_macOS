@@ -29,7 +29,7 @@ mailc - mail service control command
 ## How to setup
 1. Install dovecot with [Homebrew](https://brew.sh).
 
-    brew install dovecot --with-pigeonhole --with-pam
+    brew install dovecot
 
 1. Clone this repo into `/usr/local/share` or where you like.
 1. Move to `Services_on_macOS/mail/setup-scripts`
