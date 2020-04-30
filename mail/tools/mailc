@@ -37,6 +37,13 @@ function statuscmd(){
 }
 
 function startcmd(){
+    mkdir -p /usr/local/var/mail/spool/private
+    mkdir -p /usr/local/var/mail/spool/public
+    chown _postfix:wheel /usr/local/var/mail/spool/private
+    chown _postfix:_postdrop /usr/local/var/mail/spool/public
+    chmod 755 /usr/local/var/mail/spool/public
+    chmod 710 /usr/local/var/mail/spool/public
+
     if [ "$1" = postfix ]; then
         launchctl load -Fw "$postfixplist"
         get-postfixstatus
