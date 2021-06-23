@@ -7,8 +7,8 @@ case ${mode:=stream} in
         ;;
     show)
         mode=show
-        startdate="--start $( date +%F )"
-        enddate="--end $( date +%F )"
+        #startdate="--start $( date +%F )"
+        #enddate="--end $( date +%F )"
         ;;
     *)
         echo "$0 show|stream"

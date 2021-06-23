@@ -7,10 +7,10 @@
 
 PATH=$PATH:/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin
 postfixplist=/Library/LaunchDaemons/org.postfix.master.plist
-cmd="$(echo "$1" | tr "[:upper:]" "[:lower:]" )"
-target="$(echo "$2" | tr "[:upper:]" "[:lower:]" )"
+cmd="$(echo "$1" | tr "[:upper:]" "[:lower:]")"
+target="$(echo "$2" | tr "[:upper:]" "[:lower:]")"
 
-if [ "$( whoami )" != root ]; then
+if [ "$(whoami)" != root ]; then
     echo "Use me with sudo"
     exit 1
 fi
@@ -20,12 +20,12 @@ if [ ! -f "$postfixplist" ]; then
     exit 1
 fi
 
-function get-postfixstatus(){
-    status="$( launchctl print system/org.postfix.master 2> /dev/null | grep state | awk '{print $NF}')"
+function get-postfixstatus() {
+    status="$(launchctl print system/org.postfix.master 2>/dev/null | grep state | awk '{print $NF}')"
     echo "postfix       ${status:-stopped}"
 }
 
-function statuscmd(){
+function statuscmd() {
     if [ "$1" = postfix ]; then
         get-postfixstatus
     elif [ "$1" = dovecot ]; then
@@ -36,7 +36,7 @@ function statuscmd(){
     fi
 }
 
-function startcmd(){
+function startcmd() {
     mkdir -p /usr/local/var/mail/spool/private
     mkdir -p /usr/local/var/mail/spool/public
     chown _postfix:wheel /usr/local/var/mail/spool/private
@@ -58,7 +58,7 @@ function startcmd(){
     fi
 }
 
-function stopcmd(){
+function stopcmd() {
     if [ "$1" = postfix ]; then
         launchctl unload -Fw "$postfixplist"
         get-postfixstatus
@@ -73,42 +73,42 @@ function stopcmd(){
     fi
 }
 
-function restartcmd(){
+function restartcmd() {
     stopcmd "$1"
     startcmd "$1"
 }
 
 case "${target:=all}" in
-    postfix )
+    postfix)
         : ok
-    ;;
-    dovecot )
+        ;;
+    dovecot)
         : ok
-    ;;
-    all )
+        ;;
+    all)
         : ok
-    ;;
+        ;;
     *)
         grep ^#- "$0" | cut -c 4-
         exit 1
-    ;;
+        ;;
 esac
 
 case "${cmd:-x}" in
-    start )
+    start)
         startcmd $target
-    ;;
-    stop )
+        ;;
+    stop)
         stopcmd $target
-    ;;
-    restart )
+        ;;
+    restart)
         restartcmd $target
-    ;;
-    status )
+        ;;
+    status)
         statuscmd $target
-    ;;
+        ;;
     *)
         grep ^#- "$0" | cut -c 4-
         exit 1
-    ;;
+        ;;
 esac
