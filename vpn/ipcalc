@@ -1,120 +1,89 @@
 #!/bin/bash
+# vim: set ts=4 sw=4 sts=0 et ft=sh fenc=utf-8 ff=unix :
 
-iam=`basename "$0"`
+iam="$(basename "$0")"
 mode=help
 ERR_MSG='not_valid'
 
-function show_help(){
+function show_help() {
     cat <<_HELP
 
 Usage::
-    $iam -c <string>: Check string if it is valid as ip address.
-    $iam -s <ip address> -n N : Return next N address.
-    $iam -h         : Show this message.
+    "$iam" -c <string>: Check string if it is valid as ip address.
+    "$iam" -s <ip address> -n N : Return next N address.
+    "$iam" -h         : Show this message.
 
 _HELP
 }
 
-function check_address(){
-    OCT1=`echo $1 | awk -F. '{print $1}'`
-    OCT2=`echo $1 | awk -F. '{print $2}'`
-    OCT3=`echo $1 | awk -F. '{print $3}'`
-    OCT4=`echo $1 | awk -F. '{print $4}'`
-    OCT5=`echo $1 | awk -F. '{print $5}'`
-
-    if [ -z "$OCT1" ]; then echo $ERR_MSG ; exit 1 ;fi
-    if [ -z "$OCT2" ]; then echo $ERR_MSG ; exit 1 ;fi
-    if [ -z "$OCT3" ]; then echo $ERR_MSG ; exit 1 ;fi
-    if [ -z "$OCT4" ]; then echo $ERR_MSG ; exit 1 ;fi
-    if [ ! -z "$OCT5" ]; then echo $ERR_MSG ; exit 1 ;fi
-
-    for p in $OCT1 $OCT2 $OCT3 $OCT4
-    do
-        expr $p + 1 > /dev/null 2>&1
-        if [ $? -ne 0 ]; then
-            echo $ERR_MSG
-            exit 1 
-        fi 
-        if [ $p -lt 0 ]; then
-            echo $ERR_MSG ; exit 1
-        fi
-    done
-    
-    if ! [ $OCT1 -ge 0  -a  $OCT1 -le 255 ] ; then echo $ERR_MSG ; exit 1 ; fi
-    if ! [ $OCT2 -ge 0  -a  $OCT2 -le 255 ] ; then echo $ERR_MSG ; exit 1 ; fi
-    if ! [ $OCT3 -ge 0  -a  $OCT3 -le 255 ] ; then echo $ERR_MSG ; exit 1 ; fi
-    if ! [ $OCT4 -ge 0  -a  $OCT4 -le 255 ] ; then echo $ERR_MSG ; exit 1 ; fi
-
-    echo "${OCT1}.${OCT2}.${OCT3}.${OCT4}"
-}
-
-function calc_address(){
-    OCT1=`echo $1 | awk -F. '{print $1}'`
-    OCT2=`echo $1 | awk -F. '{print $2}'`
-    OCT3=`echo $1 | awk -F. '{print $3}'`
-    OCT4=`echo $1 | awk -F. '{print $4}'`
-    bi=""
-
-    for o in $OCT1 $OCT2 $OCT3 $OCT4
-    do
-        b=`echo "obase=2; ibase=10; $o" | bc`
-        bi=$bi`printf "%08s" $b`
-    done
-    
-    number=`echo "obase=10; ibase=2; $bi" | bc`
-    number=`expr $number + $2`
-    b=`echo "obase=2; ibase=10; $number" | bc`
-    newbi=`printf "%032s" $b`
-    
-    if [ `/bin/echo -n $newbi | wc -c` -ne 32 ]; then
-        echo "Too large!"
+function check_address() {
+    local addr="$1"
+    local type="$2"
+    local IFS=.
+    if ! [[ ("$addr" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$) ]]; then
+        echo "$ERR_MSG"
         exit 1
     fi
 
-    BI_ONE=`echo $newbi   | cut -c   1-8`
-    BI_TWO=`echo $newbi   | cut -c  9-16`
-    BI_THREE=`echo $newbi | cut -c 17-24`
-    BI_FOUR=`echo $newbi  | cut -c 25-32`
-
-    NOCT1=`echo "ibase=2; $BI_ONE"   | bc`
-    NOCT2=`echo "ibase=2; $BI_TWO"   | bc`
-    NOCT3=`echo "ibase=2; $BI_THREE" | bc`
-    NOCT4=`echo "ibase=2; $BI_FOUR"  | bc`
-
-    echo "${NOCT1}.${NOCT2}.${NOCT3}.${NOCT4}"
+    # shellcheck disable=SC2206
+    local n=($addr)
+    if [ "${n[0]}" -lt 0 ] \
+        || [ "${n[1]}" -lt 0 ] \
+        || [ "${n[2]}" -lt 0 ] \
+        || [ "${n[3]}" -lt 0 ] \
+        || [ "${n[0]}" -gt 255 ] \
+        || [ "${n[1]}" -gt 255 ] \
+        || [ "${n[2]}" -gt 255 ] \
+        || [ "${n[3]}" -gt 255 ]; then
+        echo "$ERR_MSG"
+        exit 1
+    fi
+    if [ "${type:-ip}" = dec ]; then
+        printf "%s\n" $(((\
+        n[0] << 24) | (\
+        n[1] << 16) | (\
+        n[2] << 8) | (\
+        n[3])))
+    else
+        echo "$addr"
+    fi
 }
 
-if [ $# = 0 ]; then 
+function calc_address() {
+    dec="$(($1 + $2))"
+    check_address "$(
+        printf "%d.%d.%d.%d\n" \
+            $((dec >> 24)) \
+            $(((dec >> 16) & 0xFF)) \
+            $(((dec >> 8) & 0xFF)) \
+            $((dec & 0xFF))
+    )"
+}
+
+if [ $# = 0 ]; then
     show_help
     exit 1
 fi
 
-while getopts c:hn:s: sw
-do
+while getopts c:hn:s: sw; do
     case $sw in
-        c )
+        c)
             mode=check
-            addr=${OPTARG}
+            addr="${OPTARG}"
             ;;
         s)
             mode=calc
-            if [ `check_address ${OPTARG}` = $ERR_MSG ]; then
+            dec_addr="$(check_address "${OPTARG}" "dec")"
+            if [ "$dec_addr" = "$ERR_MSG" ]; then
                 mode=help
-            else
-                addr=${OPTARG}
             fi
             ;;
         n)
             mode=calc
-            expr ${OPTARG:-0} + 1 > /dev/null 2>&1
-            if [ $? -ne 0 ]; then
+            if ! [[ ("$OPTARG" =~ ^[1-9][0-9]*$) ]]; then
                 mode=help
             else
-                if [ ${OPTARG} -lt 0 ]; then
-                    mode=help
-                else
-                    num=${OPTARG}
-                fi
+                num="${OPTARG}"
             fi
             ;;
         *)
@@ -124,17 +93,17 @@ do
 done
 
 case $mode in
-    check )
-        check_address ${addr}
+    check)
+        check_address "${addr}"
         ;;
-    calc )
-        if [ -z "$addr" -o -z "$num" ]; then
+    calc)
+        if [ -z "$dec_addr" ] || [ -z "$num" ]; then
             show_help
         else
-            calc_address ${addr} ${num}
+            calc_address "${dec_addr}" "${num}"
         fi
         ;;
-    help )
+    help)
         show_help
         ;;
 esac
