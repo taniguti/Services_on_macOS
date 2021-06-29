@@ -1,24 +1,28 @@
 #!/bin/bash
+# vim: set ts=4 sw=4 sts=0 et ft=sh fenc=utf-8 ff=unix :
 
-function _readlink(){
+function _readlink() {
     c="$1"
-    f=`basename "$c"`
-    if [ "`type -a "$c" 2> /dev/null| head -1`"x = x ]; then
-        d=`cd $(dirname "$c"); pwd`
+    f="$(basename "$c")"
+    if [ "$(type -a "$c" 2>/dev/null | head -1)"x = x ]; then
+        d="$(
+            cd "$(dirname "$c")" || exit 1
+            pwd
+        )"
     else
-        p=`type -a "$c" | head -1 | awk '{$1="";$2=""; print $0}'| sed 's/^[ \t]*//'`
-        d=`dirname "$p"`
+        p="$(type -a "$c" | head -1 | awk '{$1="";$2=""; print $0}' | sed 's/^[ \t]*//')"
+        d="$(dirname "$p")"
     fi
     if [ -L "${d}/${f}" ]; then
-        cd "${d}"
-        r="`readlink -n \"${d}/${f}\"`"
+        cd "${d}" || exit 1
+        r="$(readlink -n "${d}/${f}")"
         _readlink "$r"
     else
         echo "${d}/${f}"
     fi
 }
 
-function show_help(){
+function show_help() {
     cat <<_HELP
 
 Usage::
@@ -29,19 +33,19 @@ Usage::
 _HELP
 }
 
-function stop_vpnd(){
+function stop_vpnd() {
     LOG=/tmp/stop_vpnd.log
     service_domain="system/vpn.ppp.l2tp"
     SA="/Applications/Server.app/Contents/ServerRoot/usr/sbin/serveradmin"
     if [ -x "$SA" ]; then
-        $SA stop vpn >> $LOG 2>&1
+        "$SA" stop vpn >>"$LOG" 2>&1
     fi
     killall -HUP vpnd 2>/dev/null
-    launchctl disable $service_domain >> $LOG 2>&1
-    launchctl unload -w $service_domain >> $LOG 2>&1
+    launchctl disable "$service_domain" >>"$LOG" 2>&1
+    launchctl unload -w "$service_domain" >>"$LOG" 2>&1
 }
 
-function ask_parms(){
+function ask_parms() {
     cat <<_INST
 
 New configuration parameters are required.
@@ -51,32 +55,30 @@ New configuration parameters are required.
 
 _INST
 
-    while true
-    do
-        read -p "Enter VPN Hostname: " VPNHOST
-        if [ ${VPNHOST:-x} = x ]; then continue ; fi
+    while true; do
+        read -r -p "Enter VPN Hostname: " VPNHOST
+        if [ -z "$VPNHOST" ]; then continue; fi
         break
     done
-    while true
-    do
-        read -p "Enter start at IP address: " IPADDR
-        if [ ${IPADDR:-x} = x ]; then continue ; fi
-        if [ `"${pathtome}/ipcalc" -c $IPADDR` = "not_valid" ]; then continue ; fi
+    while true; do
+        read -r -p "Enter start at IP address: " IPADDR
+        if [ -z "$IPADDR" ]; then continue; fi
+        if [ "$("${pathtome}/ipcalc" -c "$IPADDR")" = "not_valid" ]; then continue; fi
         break
     done
-    while true
-    do
-        read -p "Enter number of address: " NUM
-        if [ ${NUM:-x} = x ]; then continue ; fi
-        expr $NUM + 1 > /dev/null 2>&1
-        if [ $? -ne 0 ]; then continue ; fi
-        break
+    while true; do
+        read -r -p "Enter number of address: " NUM
+        if [[ ("$NUM" =~ ^[1-9][0-9]*$) ]]; then
+            break
+        else
+            continue
+        fi
     done
 }
 
-iam=`basename "$0"`
-fullpath_to_me=`_readlink "$0"`
-pathtome="`dirname \"$fullpath_to_me\"`"
+iam="$(basename "$0")"
+fullpath_to_me="$(_readlink "$0")"
+pathtome="$(dirname "$fullpath_to_me")"
 SYSCONFDIR="/Library/Preferences/SystemConfiguration"
 LAUNCHDIR="/Library/LaunchDaemons"
 PNAME="com.apple.RemoteAccessServers.plist"
@@ -85,57 +87,59 @@ TEMPDIR="${pathtome}/templates"
 mode=help
 etype=migrate
 
-if [ $# = 0 ]; then show_help ; exit 1 ; fi
-while getopts fimh sw
-do
+if [ $# = 0 ]; then
+    show_help
+    exit 1
+fi
+while getopts fimh sw; do
     case $sw in
-        f )
+        f)
             mode=force
             ;;
-        i )
+        i)
             etype=init
             ;;
-        m )
+        m)
             etype=migrate
             ;;
-        * )
+        h | *)
             show_help
             exit 1
             ;;
     esac
 done
 
-if [ `whoami` != root ]; then
+if [ "$(whoami)" != root ]; then
     echo "You need administrator access to run this tool..."
     show_help
     exit 1
 fi
 
-if [ $mode = force ]; then
+if [ "$mode" = force ]; then
     etype=init
     stop_vpnd
     rm -f "${SYSCONFDIR}/${PNAME}"
     rm -f "${LAUNCHDIR}/${LAUNCHPLIST}"
 fi
 
-case $etype in
-    init )
-        if [ -f "${SYSCONFDIR}/${PNAME}" -o -f "${LAUNCHDIR}/${LAUNCHPLIST}" ]; then
+case "$etype" in
+    init)
+        if [ -f "${SYSCONFDIR}/${PNAME}" ] || [ -f "${LAUNCHDIR}/${LAUNCHPLIST}" ]; then
             echo "VPN service is already configured."
             echo "Abort!"
             show_help
             exit 1
         fi
 
-        DNSSERVERS="`awk '$1 == "nameserver" {print $2}' /etc/resolv.conf | tr '\n' ','| tr -d [:blank:]`"
-        if [ `echo "$DNSSERVERS" | wc -c` -eq 0 ]; then
+        DNSSERVERS="$(awk '$1 == "nameserver" {print $2}' /etc/resolv.conf | tr '\n' ',' | tr -d "[:blank:]")"
+        if [ "${#DNSSERVERS}" -eq 0 ]; then
             echo "No name server found in /etc/resolv.conf"
             echo "Abort!"
             exit 1
         fi
 
-        SEARCH="`awk '$1 == "search" {$1="";print $0}' /etc/resolv.conf | tr '\n' ',' | tr [:blank:] ','`"
-        if [ `echo "$SEARCH" | wc -c` -eq 0 ]; then
+        SEARCH="$(awk '$1 == "search" {$1="";print $0}' /etc/resolv.conf | tr '\n' ',' | tr "[:blank:]" ',')"
+        if [ "${#SEARCH}" -eq 0 ]; then
             SEARCH=''
         else
             SEARCH="-D $SEARCH"
@@ -150,13 +154,13 @@ case $etype in
         chown 0:0 "${SYSCONFDIR}/${PNAME}"
         chown 0:0 "${LAUNCHDIR}/${LAUNCHPLIST}"
 
-        "${pathtome}/vpndc-dns" -d $DNSSERVERS $SEARCH
-        "${pathtome}/vpndc-hostname" -n $VPNHOST
-        "${pathtome}/vpndc-car" -S $IPADDR -n $NUM
-        "${pathtome}/vpndc-presharedkey" -C > /dev/null 2>&1
+        "${pathtome}/vpndc-dns" -d "$DNSSERVERS" "$SEARCH"
+        "${pathtome}/vpndc-hostname" -n "$VPNHOST"
+        "${pathtome}/vpndc-car" -S "$IPADDR" -n "$NUM"
+        "${pathtome}/vpndc-presharedkey" -C >/dev/null 2>&1
 
         ;;
-    migrate )
+    migrate)
         if [ -f "${LAUNCHDIR}/${LAUNCHPLIST}" ]; then
             echo "VPN service is already configured."
             echo "Abort!"
@@ -170,17 +174,17 @@ case $etype in
         ;;
 esac
 
-launchctl load -w "${LAUNCHDIR}/${LAUNCHPLIST}" > /dev/null 2>&1
+launchctl load -w "${LAUNCHDIR}/${LAUNCHPLIST}" >/dev/null 2>&1
 T=10
 /bin/echo -n "Starting VPN Service. Wait $T seconds"
-for n in `seq 1 $T`
-do
+for n in $(seq 1 $T); do
     /bin/echo -n '. '
     sleep 1
+    echo "$n" >/dev/null
 done
 echo ""
-vpnstatus=`${pathtome}/vpndc status`
-if [ $vpnstatus = 'running' ]; then
+vpnstatus="$("${pathtome}/vpndc" status)"
+if [ "$vpnstatus" = 'running' ]; then
     echo "Good! Your VPN service is now ${vpnstatus}."
     exit 0
 else
