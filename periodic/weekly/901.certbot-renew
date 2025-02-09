@@ -1,32 +1,40 @@
 #!/bin/bash
 
 if [ -r /etc/defaults/periodic.conf ]; then
-	. /etc/defaults/periodic.conf
-	source_periodic_confs
+    . /etc/defaults/periodic.conf
+    source_periodic_confs
 fi
 
 if [ ! -x /usr/local/bin/certbot ]; then
-	certbot_renew=NO
+    certbot_renew=NO
 fi
 
 case "${certbot_renew:-NO}" in
     [Yy][Ee][Ss])
         postscript="/tmp/$(uuidgen)"
-        echo '#!/bin/bash'           > "$postscript"
-        echo ': do post-hook script' >> "$postscript"
+        echo '#!/bin/bash' >"$postscript"
+        echo ': do post-hook script' >>"$postscript"
         chmod 755 "$postscript"
-        if [ -x  /usr/local/sbin/mailc ]; then
-            echo "/usr/local/sbin/mailc restart all" >> "$postscript"
+        if [ -x /usr/local/bin/brew ]; then
+            echo "/usr/local/bin/brew services restart dovecot" >>"$postscript"
         fi
+
+        if [ -x /usr/local/sbin/mailc ]; then
+            echo "/usr/local/sbin/mailc restart postfix" >>"$postscript"
+            echo "/usr/local/sbin/mailc status all" >>"$postscript"
+        fi
+
         if [ -x /usr/local/sbin/import_letsencrypt_into_system_keychain ]; then
-            echo "/usr/local/sbin/import_letsencrypt_into_system_keychain" >> "$postscript"
+            echo "/usr/local/sbin/import_letsencrypt_into_system_keychain" >>"$postscript"
         fi
-        /usr/local/bin/certbot renew --post-hook "$postscript" 2>&1
-        rc=$?
-		;;
+        echo "/usr/local/bin/certbot renew --post-hook $postscript" | tee -a /tmp/certbot_renew.log
+        /usr/local/bin/certbot renew --post-hook "$postscript" 2>&1 | tee -a /tmp/certbot_renew.log
+        rc=${PIPESTATUS[0]}
+        echo "EXIT CODE: $rc" | tee -a /tmp/certbot_renew.log
+        ;;
     *)
         rc=0
-		;;
+        ;;
 esac
 
 exit $rc
